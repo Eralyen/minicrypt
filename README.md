@@ -1,0 +1,1 @@
+A fast, secure MiniScript cryptography library.

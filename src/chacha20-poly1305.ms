@@ -135,12 +135,12 @@ minicrypt.ChaCha.getSyntheticNonce = function(key, plaintext)
     return nonce
 end function
 
-minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "UTF-16", ciphertext_encoding = "base64", nonce = null, counter = 1)
+minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null, counter = 1)
     if typeof(@plaintext_encoding) == "list" then
         encoder = @plaintext_encoding[0]
-    else if plaintext_encoding == "UTF-16" then
+    else if plaintext_encoding == "16bit" then
         encoder = @minicrypt.Encode.encodeText16
-    else if plaintext_encoding == "UTF-8" then
+    else if plaintext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -150,7 +150,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "UTF-16
         decoder = @ciphertext_encoding[1]
     else if ciphertext_encoding == "base64" then
         decoder = @minicrypt.Encode.toBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
         return null
@@ -176,12 +176,12 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "UTF-16
     return enc
 end function
 
-minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "UTF-16", ciphertext_encoding = "base64", counter = 1)
+minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", counter = 1)
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
         encoder = @minicrypt.Encode.fromBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -189,9 +189,9 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "UTF-1
 
     if typeof(@plaintext_encoding) == "list" then
         decoder = @plaintext_encoding[1]
-    else if plaintext_encoding == "UTF-16" then
+    else if plaintext_encoding == "16bit" then
         decoder = @minicrypt.Encode.decodeText16
-    else if plaintext_encoding == "UTF-8" then
+    else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
         return null
@@ -275,7 +275,7 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
         encoder = @minicrypt.Encode.fromBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -355,12 +355,12 @@ end function
 
 // if "encoding" is a custom function, it needs to take an arbitrary string and return
 // a list of little-endian 32-bit integers, and the number of bytes.
-minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_encoding = "UTF-16", ciphertext_encoding = "base64", nonce = null)
+minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
     if typeof(@plaintext_encoding) == "list" then
         encoder = @plaintext_encoding[0]
-    else if plaintext_encoding == "UTF-16" then
+    else if plaintext_encoding == "16bit" then
         encoder = @minicrypt.Encode.encodeText16
-    else if plaintext_encoding == "UTF-8" then
+    else if plaintext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -370,7 +370,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
         decoder = @ciphertext_encoding[1]
     else if ciphertext_encoding == "base64" then
         decoder = @minicrypt.Encode.toBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
         return null
@@ -401,12 +401,12 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     return ciphertext
 end function
 
-minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encoding = "UTF-16", ciphertext_encoding = "base64")
+minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
         encoder = @minicrypt.Encode.fromBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -414,9 +414,9 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encodin
 
     if typeof(@plaintext_encoding) == "list" then
         decoder = @plaintext_encoding[1]
-    else if plaintext_encoding == "UTF-16" then
+    else if plaintext_encoding == "16bit" then
         decoder = @minicrypt.Encode.decodeText16
-    else if plaintext_encoding == "UTF-8" then
+    else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
         return null
@@ -457,7 +457,7 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
         encoder = @minicrypt.Encode.fromBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -481,12 +481,12 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
     return verify
 end function
 
-minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "UTF-16", ciphertext_encoding = "base64")
+minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
         encoder = @minicrypt.Encode.fromBase64
-    else if ciphertext_encoding == "UTF-8" then
+    else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
         return null
@@ -494,9 +494,9 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "U
 
     if typeof(@plaintext_encoding) == "list" then
         decoder = @plaintext_encoding[1]
-    else if plaintext_encoding == "UTF-16" then
+    else if plaintext_encoding == "16bit" then
         decoder = @minicrypt.Encode.decodeText16
-    else if plaintext_encoding == "UTF-8" then
+    else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
         return null

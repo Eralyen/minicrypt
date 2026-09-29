@@ -87,8 +87,8 @@ TEST "ChaCha.encrypt - ChaCha.decrypt", function
     counter = 1
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
 
-    ciphertext = minicrypt.ChaCha.encrypt(key, plaintext, "UTF-8", "base64", nonce, counter)
-    deciphered = minicrypt.ChaCha.decrypt(key, ciphertext, "UTF-8")
+    ciphertext = minicrypt.ChaCha.encrypt(key, plaintext, "8bit", "base64", nonce, counter)
+    deciphered = minicrypt.ChaCha.decrypt(key, ciphertext, "8bit")
     ciphertext_len = minicrypt.Encode.fromBase64(ciphertext)[1]
     expectEqual(ciphertext_len-20, plaintext.len, "Base64 ciphertext length")
     expectEqual(deciphered, plaintext, "Successive encryption and decryption 1")

@@ -6,9 +6,9 @@ if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 import_code("./bigint.ms")
 import_code("./encode.ms")
+import_code("./error.ms")
 
 __scope = function //-------------
-
 
 minicrypt.Poly1305 = {}
 minicrypt.Poly1305.BigInt = new minicrypt.BigInt
@@ -159,7 +159,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     key_enc = minicrypt.Encode.hexToB32(key)
 
     res = encoder(plaintext)
-    if res == null then return null
+    if typeof(res) == "error" then return res
     plaintext_enc = res[0]
     plaintext_len = res[1]
 
@@ -200,19 +200,18 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
     key_enc = minicrypt.Encode.hexToB32(key)
 
     res = encoder(ciphertext)
-    if res == null then return null
+    if typeof(res) == "error" then return res
 
     msg_enc = res[0]
     msg_len = res[1]
-    if msg_enc.len < 5 then return null
+    if msg_enc.len < 5 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "cyphertext_too_short")
 
     nonce_enc = msg_enc[:3]
     ciphertext_enc = msg_enc[5:]
     ciphertext_len = msg_enc[3] + msg_enc[4] * 4294967296
-    if ciphertext_enc.len != ceil(ciphertext_len/4) then return null
+    if ciphertext_enc.len != ceil(ciphertext_len/4) then return minicrypt.Error("minicrypt.ChaCha.decrypt", "cyphertext_len_mismatch")
 
     plaintext_enc = minicrypt.ChaCha.chacha(key_enc, nonce_enc, ciphertext_enc, ciphertext_len, counter)
-    if plaintext_enc == null then return null
     plaintext_len = ciphertext_len
 
     plaintext = decoder(plaintext_enc, plaintext_len)
@@ -245,7 +244,7 @@ end function
 // key should be a list of 8 numbers, 32-bit. Enough for 256 bits
 // msg is serialized, list of 32-bit numbers.
 minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
-    if msg.len == 0 then return null
+    if msg.len == 0 then return minicrypt.Error("minicrypt.Poly1305.macRaw", "empty_ciphertext")
     r = minicrypt.Poly1305.clampR(key[:4]) + [0]
     r = minicrypt.Encode.B32toB26(r)
     s = minicrypt.Encode.B32toB26(key[4:]) + [0]
@@ -284,12 +283,12 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     key_enc = minicrypt.Encode.hexToB32(key)
     
     res = encoder(ciphertext)
-    if res == null then return false
+    if typeof(res) == "error" then return false
     ciphertext_enc = res[0]
     ciphertext_len = res[1]
 
     verify = minicrypt.Poly1305.macRaw(key_enc, ciphertext_enc, ciphertext_len)
-    if verify == null then return false
+    if typeof(verify) == "error" then return false
     return verify
 end function
 
@@ -307,13 +306,13 @@ end function
 
 // returns [aad, aad_len, ciphertext, ciphertext_len]
 minicrypt.ChaCha20Poly1305.splitAEAD = function(aead)
-    if aead.len < 4 then return null
-    if aead.len % 4 != 0 then return null
+    if aead.len < 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "short_aead")
+    if aead.len % 4 != 0 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "unpadded_aead")
     aad_len = aead[-4] + aead[-3] * 4294967296
     ciphertext_len = aead[-2] + aead[-1] * 4294967296
     aad_padded_len = ceil(aad_len/4) + (4 - ceil(aad_len / 4) % 4)
     ciphertext_padded_len = ceil(ciphertext_len/4) + (4 - ceil(ciphertext_len / 4) % 4)
-    if aead.len != aad_padded_len + ciphertext_padded_len + 4 then return null
+    if aead.len != aad_padded_len + ciphertext_padded_len + 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "length_mismatch")
     aad = aead[:ceil(aad_len/4)]
     ciphertext = aead[aad_padded_len : aad_padded_len + ceil(ciphertext_len/4)]
     return [aad, aad_len, ciphertext, ciphertext_len]
@@ -321,7 +320,7 @@ end function
 
 // returns [tag, nonce, aead]
 minicrypt.ChaCha20Poly1305.splitMessage = function(msg)
-    if msg.len < 11 or msg.len % 4 != 3 then return null
+    if msg.len < 11 or msg.len % 4 != 3 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitMessage", "malformed_msg")
     return [msg[:4], msg[4:7], msg[7:]]
 end function
 
@@ -336,20 +335,19 @@ end function
 
 minicrypt.ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
     res = minicrypt.ChaCha20Poly1305.splitAEAD(aead)
-    if res == null then return null
+    if typeof(res) == "error" then return res
     aad = res[0]
     aad_len = res[1]
     ciphertext = res[2]
     ciphertext_len = res[3]
     plaintext = minicrypt.ChaCha.chacha(key, nonce, ciphertext, ciphertext_len, 1)
-    if plaintext == null then return null
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
 minicrypt.ChaCha20Poly1305.verifyRaw = function(key, tag, nonce, aead)
     otk = minicrypt.ChaCha.keygen(key, nonce)
     actual_tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
-    if actual_tag == null then return false
+    if typeof(actual_tag) == "error" then return false
     return actual_tag == tag
 end function
 
@@ -379,12 +377,12 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     key_enc = minicrypt.Encode.hexToB32(key)
     
     enc = encoder(aad)
-    if enc == null then return null
+    if typeof(enc) == "error" then return enc
     aad_enc = enc[0]
     aad_len_bytes = enc[1]
     
     enc = encoder(plaintext)
-    if enc == null then return null
+    if typeof(enc) == "error" then return enc
     plaintext_enc = enc[0]
     plaintext_len_bytes = enc[1]
 
@@ -394,7 +392,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
                                       aad_enc, aad_len_bytes, 
                                       plaintext_enc, plaintext_len_bytes)
-    if enc == null then return null
+    if typeof(enc) == "error" then return enc
     aead = enc[0]
     tag = enc[1]
     ciphertext = decoder(tag + nonce + aead, 16 + 12 + aead.len * 4)
@@ -425,21 +423,21 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encodin
     key_enc = minicrypt.Encode.hexToB32(key)
 
     res = encoder(ciphertext)
-    if res == null then return null
+    if typeof(res) == "error" then return res
     ciphertext_enc = res[0]
 
     res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
-    if res == null then return null
+    if typeof(res) == "error" then return res
 
     tag_enc = res[0]
     nonce_enc = res[1]
     aead_enc = res[2]
 
     verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
-    if not verify then return null
+    if not verify then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "not_verified")
 
     enc = minicrypt.ChaCha20Poly1305.decryptRaw(key_enc, nonce_enc, aead_enc)
-    if enc == null then return null
+    if typeof(enc) == "error" then return enc
 
     aad_enc = enc[0]
     aad_len_bytes = enc[1]
@@ -447,7 +445,8 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encodin
     plaintext_len_bytes = enc[3]
     aad = decoder(aad_enc, aad_len_bytes)
     plaintext = decoder(plaintext_enc, plaintext_len_bytes)
-    if aad == null or plaintext == null then return null
+    if typeof(aad) == "error" then return aad
+    if typeof(plaintext) == "error" then return plaintext
 
     return [aad, plaintext]
 end function
@@ -466,18 +465,18 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
     key_enc = minicrypt.Encode.hexToB32(key)
     
     res = encoder(ciphertext)
-    if res == null then return false
+    if typeof(res) == "error" then return false
     ciphertext_enc = res[0]
 
     res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
-    if res == null then return false
+    if typeof(res) == "error" then return false
 
     tag_enc = res[0]
     nonce_enc = res[1]
     aead_enc = res[2]
 
     verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
-    if verify == null then return false
+    if typeof(verify) == "error" then return false
     return verify
 end function
 
@@ -503,11 +502,11 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     end if
 
     res = encoder(ciphertext)
-    if res == null then return null
+    if typeof(res) == "error" then return res
     ciphertext_enc = res[0]
 
     res = minicrypt.ChaCha20Poly1305.splitAEAD(ciphertext_enc)
-    if res == null then return null
+    if typeof(res) == "error" then return res
 
     aad_enc = res[0]
     aad_len = res[1]

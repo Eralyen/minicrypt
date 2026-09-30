@@ -4,6 +4,12 @@ __scope = function //-------------
 
 minicrypt.Utils = {}
 minicrypt.Utils.hexdump = function(b64)
+    byteToChar = function(b)
+        blacklist = range(0,31) + range(127, 159) + [173]
+        if blacklist.indexOf(b) != null then return "."
+        return char(b)
+    end function
+
     val = minicrypt.Encode.fromBase64(b64)
     if val == null then return null
     num = val[0]
@@ -36,7 +42,7 @@ minicrypt.Utils.hexdump = function(b64)
         line = line + "   " * (16 - block.len)
         line = line[:34] + " " + line[34:] + " |"
         for b in block
-            line = line + minicrypt.Encode.byteToChar(b)
+            line = line + byteToChar(b)
         end for
         line = line + "|"
         hexdump.push(line)

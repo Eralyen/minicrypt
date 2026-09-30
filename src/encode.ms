@@ -248,12 +248,6 @@ minicrypt.Encode.byteToHex = function(b)
     return minicrypt.Encode.INT2HEX[floor(b/16)] + minicrypt.Encode.INT2HEX[b % 16]
 end function
 
-minicrypt.Encode.byteToChar = function(b)
-    blacklist = range(0,31) + range(127, 159) + [173]
-    if blacklist.indexOf(b) != null then return "."
-    return char(b)
-end function
-
 minicrypt.Encode.intToHex = function(n)
     h = ""
     for i in range(0, 7)

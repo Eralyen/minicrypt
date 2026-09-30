@@ -1,0 +1,3 @@
+*.ms linguist-language=MiniScript
+*.src linguist-language=MiniScript
+*.gs linguist-language=MiniScript

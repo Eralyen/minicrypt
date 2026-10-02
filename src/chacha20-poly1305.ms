@@ -82,16 +82,20 @@ minicrypt.ChaCha.chachaBlock = function(output, input)
     end for
 end function
 
+minicrypt.ChaCha.assembleState = function(key, nonce, counter)
+    return [1634760805, 857760878, 2036477234, 1797285236] +
+           key +
+           [counter] +
+           nonce
+end function
+
 // Sets ChaCha's internal state
 // @param {list<number>} key       - secret key, list of 4 numbers, 32-bit 
 // @param {list<number>} nonce     - random list of 3 numbers, 32-bit 
 // @param {list<number>} plaintext - plaintext to be encrypted
 // @param {number} counter         - leave as is
 minicrypt.ChaCha.chacha = function(key, nonce, plaintext, byte_count, counter = 1)
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-            key + 
-            [counter] +
-            nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     ciphertext = []
     key_stream = [0] * 16
     encrypted_block = [0] * 16
@@ -219,11 +223,7 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
 end function
 
 minicrypt.ChaCha.keygen = function(key, nonce)
-    counter = 0
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-            key + 
-            [counter] +
-            nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, 0)
     block = [0] * 16
     minicrypt.ChaCha.chachaBlock(block, state)
     return block[:8]

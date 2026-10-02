@@ -78,10 +78,7 @@ TEST "ChaCha20 Block Function", function
     counter = 1
     output = [0] * 16
     minicrypt.ChaCha.ROUNDS = 20
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-            key + 
-            [counter] +
-            nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     expected_state = [
         "61707865", "3320646e", "79622d32", "6b206574",
         "03020100", "07060504", "0b0a0908", "0f0e0d0c",
@@ -167,10 +164,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
         "7c5941da", "8d485751", "3fe02477", "374ad8b8",
         "f4b8436a", "1ca11815", "69b687c3", "8665eeb2",
     ]
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-        key + 
-        [counter] +
-        nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
@@ -189,10 +183,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
         "7621b729", "434ee69c", "b03371d5", "d539d874",
         "281fed31", "45fb0a51", "1f0ae1ac", "6f4d794b",
     ]
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-        key + 
-        [counter] +
-        nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
@@ -211,10 +202,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
         "bb00ca8e", "da3ba7b4", "c4b592d1", "fdf2732f",
         "4436274e", "2561b3c8", "ebdd4aa6", "a0136c00",
         ]
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-        key + 
-        [counter] +
-        nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
@@ -233,10 +221,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
         "a25ab213", "48a6b46c", "1b9d9bcb", "092c5be6",
         "546ca624", "1bec45d5", "87f47473", "96f0992e",
     ]
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-        key + 
-        [counter] +
-        nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
@@ -255,10 +240,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
         "0e0e978a", "f3145c95", "1b748ea8", "f786c297",
         "99c28f5f", "628314e8", "398a19fa", "6ded1b53",
         ]
-    state = [1634760805,  857760878, 2036477234, 1797285236] + 
-        key + 
-        [counter] +
-        nonce
+    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 

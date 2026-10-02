@@ -253,7 +253,7 @@ minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
     for i in range(0, msg.len-1, 4)
         n = minicrypt.Encode.B32toB26(msg[i:i+4]) + [0]
         b = 128
-        if i == msg.len-1 then
+        if i + 4 >= msg.len then
             n = n + [0] * (6 - n.len % 6)
             b = (byte_count % 16) * 8
             if b == 0 then b = 128

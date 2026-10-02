@@ -125,7 +125,7 @@ TEST "RFC 8439 - Poly1305 Key Generation", function
     key = minicrypt.Encode.hexBytesToB32("80:81:82:83:84:85:86:87:88:89:8a:8b:8c:8d:8e:8f:90:91:92:93:94:95:96:97:98:99:9a:9b:9c:9d:9e:9f")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:01:02:03:04:05:06:07")
     expected = minicrypt.Encode.hexBytesToB32("8a:d5:a0:8b:90:5f:81:cc:81:50:40:27:4a:b2:94:71:a8:33:b6:37:e3:fd:0d:a5:08:db:b8:e2:fd:d1:a6:46")
-    expectEqual(minicrypt.ChaCha.keygen(key, nonce), expected)
+    expectEqual(minicrypt.ChaCha20Poly1305.keygen(key, nonce), expected)
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.8.2
@@ -462,21 +462,21 @@ TEST "RFC 8439 - Additional Vectors: Poly1305 Key Generation", function
     chacha_key = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00")
     expected_poly1305_key = minicrypt.Encode.hexBytesToB32("76:b8:e0:ad:a0:f1:3d:90:40:5d:6a:e5:53:86:bd:28:bd:d2:19:b8:a0:8d:ed:1a:a8:36:ef:cc:8b:77:0d:c7")
-    actual_poly1305_key = minicrypt.ChaCha.keygen(chacha_key, nonce)
+    actual_poly1305_key = minicrypt.ChaCha20Poly1305.keygen(chacha_key, nonce)
     expectEqual(actual_poly1305_key, expected_poly1305_key, "Test Vector #1")
 
     // Test Vector #2
     chacha_key = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:01")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:02")
     expected_poly1305_key = minicrypt.Encode.hexBytesToB32("ec:fa:25:4f:84:5f:64:74:73:d3:cb:14:0d:a9:e8:76:06:cb:33:06:6c:44:7b:87:bc:26:66:dd:e3:fb:b7:39")
-    actual_poly1305_key = minicrypt.ChaCha.keygen(chacha_key, nonce)
+    actual_poly1305_key = minicrypt.ChaCha20Poly1305.keygen(chacha_key, nonce)
     expectEqual(actual_poly1305_key, expected_poly1305_key, "Test Vector #2")
 
     // Test Vector #3
     chacha_key = minicrypt.Encode.hexBytesToB32("1c:92:40:a5:eb:55:d3:8a:f3:33:88:86:04:f6:b5:f0:47:39:17:c1:40:2b:80:09:9d:ca:5c:bc:20:70:75:c0")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:02")
     expected_poly1305_key = minicrypt.Encode.hexBytesToB32("96:5e:3b:c6:f9:ec:7e:d9:56:08:08:f4:d2:29:f9:4b:13:7f:f2:75:ca:9b:3f:cb:dd:59:de:aa:d2:33:10:ae")
-    actual_poly1305_key = minicrypt.ChaCha.keygen(chacha_key, nonce)
+    actual_poly1305_key = minicrypt.ChaCha20Poly1305.keygen(chacha_key, nonce)
     expectEqual(actual_poly1305_key, expected_poly1305_key, "Test Vector #3")
 end function
 

@@ -5,7 +5,7 @@ import_code("../src/bigint.ms")
 BigInt = minicrypt.BigInt
 BigInt.init
 
-TEST "BigInt.init", function
+TEST "BIGINT - BigInt.init", function
     expectEqual(BigInt.BITS, BigInt.W * BigInt.N, 
         "BigInt.BITS = BigInt.W * BigInt.N")
 
@@ -16,12 +16,12 @@ TEST "BigInt.init", function
         "BigInt.MAXVAL1 = BigInt.MAXVAL + 1")
 end function
 
-TEST "BigInt.Utils.random", function
+TEST "BIGINT - BigInt.Utils.random", function
     expectNotEq(BigInt.Utils.random(0, BigInt.MAXVAL), BigInt.Utils.random(0, BigInt.MAXVAL), 
         "Two random numbers drawn at the same time should not be identical")
 end function
 
-TEST "BigInt.times10", function
+TEST "BIGINT - BigInt.times10", function
     ten = BigInt.zero
     ten[0] = 10
 
@@ -38,7 +38,7 @@ TEST "BigInt.times10", function
     expectEqual(BigInt.times10(long1), long2, "Big integer times 10 with no carry")
 end function
 
-TEST "BigInt.fromString", function
+TEST "BIGINT - BigInt.fromString", function
     ten = BigInt.zero
     ten[0] = 10
     expectEqual(BigInt.fromString("10"), ten, """10"" -> 10")
@@ -51,14 +51,14 @@ TEST "BigInt.fromString", function
     BigInt.init
 end function
 
-TEST "BigInt.toString", function
+TEST "BIGINT - BigInt.toString", function
     ten = BigInt.zero
     ten[0] = 10
     expectEqual(BigInt.toString(ten), "10", "10 -> ""10""")
     expectEqual(BigInt.toString(BigInt.zero), "0", "0 -> ""0""")
 end function
 
-TEST "BigInt.cmp", function
+TEST "BIGINT - BigInt.cmp", function
     n1 = BigInt.one
     n0 = BigInt.zero
     nn1 = BigInt.negOne
@@ -70,7 +70,7 @@ TEST "BigInt.cmp", function
     expectEqual(BigInt.cmp(n1, nn1), 1, "cmp(1,-1) = 1")
 end function
 
-TEST "BigInt.invertP", function
+TEST "BIGINT - BigInt.invertP", function
     three = BigInt.fromSmall(3)
     four = BigInt.fromSmall(4)
     eleven = BigInt.fromSmall(11)
@@ -81,7 +81,7 @@ TEST "BigInt.invertP", function
     expectEqual(BigInt.invertP(n271, n383), n106, "271^-1 = 106 mod 383")
 end function
 
-TEST "BigInt.mult", function
+TEST "BIGINT - BigInt.mult", function
     BigInt.init(128, 26)
     a = [45781294, 66360979, 8747345, 63161984, 54681217]
     b = [3260956, 142, 8268, 508120, 568309]
@@ -91,7 +91,7 @@ TEST "BigInt.mult", function
     BigInt.init
 end function
 
-TEST "BigInt.specMod", function
+TEST "BIGINT - BigInt.specMod", function
     BigInt.init(156, 26)
     x = [3849480, 43865974, 7289493, 6596178, 24153398, 17295018, 23827609, 6585633, 62592801, 463065, 0, 0]
     p = [67108859, 67108863, 67108863, 67108863, 67108863, 0]

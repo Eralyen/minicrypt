@@ -3,11 +3,11 @@ import_code("./MiniTest.src")
 import_code("../src/chacha20-poly1305.ms")
 import_code("../src/encode.ms")
 
-TEST "ChaCha.chachaBlock", function
+TEST "CHACHA20-POLY1305 - ChaCha.chachaBlock", function
     //TODO: test edge cases
 end function
 
-TEST "ChaCha.encrypt - ChaCha.decrypt", function
+TEST "CHACHA20-POLY1305 - ChaCha.encrypt - ChaCha.decrypt", function
     minicrypt.ChaCha.ROUNDS = 20
     key = "00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f".replace(":", "")
     nonce = "00:00:00:00:00:00:00:4a:00:00:00:00".replace(":", "")
@@ -39,7 +39,7 @@ TEST "ChaCha.encrypt - ChaCha.decrypt", function
     expectEqual(deciphered, plaintext, "Successive encryption and decryption 4")
 end function
 
-TEST "ChaCha20Poly1305.*Raw", function
+TEST "CHACHA20-POLY1305 - ChaCha20Poly1305.*Raw", function
     plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[0]
     plaintext_len = 114
     aad = minicrypt.Encode.hexBytesToB32("50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7")
@@ -66,7 +66,7 @@ TEST "ChaCha20Poly1305.*Raw", function
     expectEqual(deciphered, plaintext, "Deciphered text matches")
 end function
 
-TEST "Malformed AEAD", function
+TEST "CHACHA20-POLY1305 - Malformed AEAD", function
     key = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
     aad = "Visible text"
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."

@@ -4,7 +4,7 @@ import_code("../src/chacha20-poly1305.ms")
 import_code("../src/encode.ms")
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.1.1
-TEST "Quarter Round", function
+TEST "RFC 8439 - Quarter Round", function
     bitwiseHexToInt = function(h)
         h = h[2:] //removes the '0x'
         c = minicrypt.Encode.HEX2BYTE
@@ -46,7 +46,7 @@ TEST "Quarter Round", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.2.1
-TEST "Quarter Round on the ChaCha State", function
+TEST "RFC 8439 - Quarter Round on the ChaCha State", function
     bitwiseHexToInt = function(h)
         c = minicrypt.Encode.HEX2BYTE
         return c[h[6:8]] + c[h[4:6]] * 256 + c[h[2:4]] * 65536 + c[h[0:2]] * 16777216
@@ -72,7 +72,7 @@ TEST "Quarter Round on the ChaCha State", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.3.2
-TEST "ChaCha20 Block Function", function
+TEST "RFC 8439 - ChaCha20 Block Function", function
     key = minicrypt.Encode.hexBytesToB32("00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:09:00:00:00:4a:00:00:00:00")
     counter = 1
@@ -98,7 +98,7 @@ TEST "ChaCha20 Block Function", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.4.2
-TEST "ChaCha20 Cipher", function
+TEST "RFC 8439 - ChaCha20 Cipher", function
     minicrypt.ChaCha.ROUNDS = 20
     key = "00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f".replace(":", "")
     nonce = "00:00:00:00:00:00:00:4a:00:00:00:00".replace(":", "")
@@ -113,7 +113,7 @@ TEST "ChaCha20 Cipher", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.5.2
-TEST "Poly1305", function
+TEST "RFC 8439 - Poly1305", function
     key = minicrypt.Encode.hexBytesToB32("85:d6:be:78:57:55:6d:33:7f:44:52:fe:42:d5:06:a8:01:03:80:8a:fb:0d:b2:fd:4a:bf:f6:af:41:49:f5:1b")
     msg = minicrypt.Encode.encodeText8("Cryptographic Forum Research Group")[0]
     tag = minicrypt.Encode.hexBytesToB32("a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9")
@@ -121,7 +121,7 @@ TEST "Poly1305", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.6.2
-TEST "Poly1305 Key Generation", function
+TEST "RFC 8439 - Poly1305 Key Generation", function
     key = minicrypt.Encode.hexBytesToB32("80:81:82:83:84:85:86:87:88:89:8a:8b:8c:8d:8e:8f:90:91:92:93:94:95:96:97:98:99:9a:9b:9c:9d:9e:9f")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:01:02:03:04:05:06:07")
     expected = minicrypt.Encode.hexBytesToB32("8a:d5:a0:8b:90:5f:81:cc:81:50:40:27:4a:b2:94:71:a8:33:b6:37:e3:fd:0d:a5:08:db:b8:e2:fd:d1:a6:46")
@@ -129,7 +129,7 @@ TEST "Poly1305 Key Generation", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.8.2
-TEST "AEAD_CHACHA20_POLY1305", function
+TEST "RFC 8439 - AEAD_CHACHA20_POLY1305", function
     plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[0]
     plaintext_len = 114
     aad = minicrypt.Encode.hexBytesToB32("50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7")
@@ -151,7 +151,7 @@ end function
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.1
-TEST "Additional Vectors: The ChaCha20 Block Functions", function
+TEST "RFC 8439 - Additional Vectors: The ChaCha20 Block Functions", function
 
     // TEST VECTOR #1
 
@@ -249,7 +249,7 @@ TEST "Additional Vectors: The ChaCha20 Block Functions", function
     // If the test above this comment passes, then the keystream is also correct
 end function
 
-TEST "Additional Vectors: ChaCha20 Encryption", function
+TEST "RFC 8439 - Additional Vectors: ChaCha20 Encryption", function
 
     // TEST VECTOR #1
 
@@ -332,7 +332,7 @@ end function
 
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.3
-TEST "Additional Vectors: Poly1305 Message Authentication Code", function
+TEST "RFC 8439 - Additional Vectors: Poly1305 Message Authentication Code", function
     check = function(key, msg, byte_count, tag, note)
         expected = minicrypt.Encode.hexBytesToB32(tag)
         actual = minicrypt.Poly1305.macRaw(key, msg, byte_count)
@@ -455,7 +455,7 @@ TEST "Additional Vectors: Poly1305 Message Authentication Code", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.4
-TEST "Additional Vectors: Poly1305 Key Generation", function
+TEST "RFC 8439 - Additional Vectors: Poly1305 Key Generation", function
     minicrypt.ChaCha.ROUNDS = 20
 
     // Test Vector #1
@@ -481,7 +481,7 @@ TEST "Additional Vectors: Poly1305 Key Generation", function
 end function
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.5
-TEST "Additional Vectors: ChaCha20-Poly1305 AEAD Decryption", function
+TEST "RFC 8439 - Additional Vectors: ChaCha20-Poly1305 AEAD Decryption", function
     minicrypt.ChaCha.ROUNDS = 20
 
     // Key

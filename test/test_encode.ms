@@ -2,7 +2,7 @@ globals.isGH = true
 import_code("./MiniTest.src")
 import_code("../src/encode.ms")
 
-TEST "Encode.B32toB26", function
+TEST "ENCODE - Encode.B32toB26", function
     bi32 = [4078784323, 3787266857, 1866653276, 3980223449]
     bi26 = [52252483, 54971004, 31837723, 56999179, 15547747]
     res = minicrypt.Encode.B32toB26(bi32)
@@ -14,7 +14,7 @@ TEST "Encode.B32toB26", function
     expectEqual(res, bi26)
 end function
 
-TEST "Encode.B26toB32", function
+TEST "ENCODE - Encode.B26toB32", function
     bi32 = [4294967295] // 2^32-1
     bi26 = [67108863, 63]
     res = minicrypt.Encode.B26toB32(bi26)
@@ -31,7 +31,7 @@ TEST "Encode.B26toB32", function
     expectEqual(res, bi32)
 end function
 
-TEST "Encode.toBase64", function
+TEST "ENCODE - Encode.toBase64", function
     toB64 = function(s)
         return minicrypt.Encode.toBase64(minicrypt.Encode.encodeText16(s)[0], s.len*2)
     end function
@@ -44,7 +44,7 @@ TEST "Encode.toBase64", function
     expectEqual(toB64("foobar"), "ZgBvAG8AYgBhAHIA")
 end function
 
-TEST "Encode.fromBase64", function
+TEST "ENCODE - Encode.fromBase64", function
     fromB64 = function(s)
         decoded = minicrypt.Encode.fromBase64(s)
         return minicrypt.Encode.decodeText16(decoded[0], decoded[1])

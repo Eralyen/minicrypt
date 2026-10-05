@@ -1,6 +1,9 @@
-// https://en.wikipedia.org/wiki/Salsa20#ChaCha_variant
+// ChaCha20 is a symmetric stream cipher that is much faster than the more commonly used AES when hardware acceleration isn't available.
+// It's often combined with Poly1305, a keyed hash function that can be used to provide message authentication.
+// https://en.wikipedia.org/wiki/ChaCha20-Poly1305
+//
+// This implementation provides both algorithms separately, as well as combined together. I followed this RFC specification:
 // https://www.rfc-editor.org/info/rfc8439/
-// 32 bit counter is enough for 256GB of data. Add this restriction explicitly
 
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
@@ -290,29 +293,29 @@ end function
 // @param {list<number>}   key        - list of 8 32-bit integers
 // @param {list<number>}   msg        - list of 32-bit integers
 // @param {number}         byte_count - length of the message in bytes
-// @returns {list<number>}          - list of 4 32-bit integers
+// @returns {list<number>}            - list of 4 32-bit integers
 minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
-    if msg.len == 0 then return minicrypt.Error("minicrypt.Poly1305.macRaw", "empty_ciphertext")
     r = minicrypt.Poly1305.clampR(key[:4]) + [0]
     r = minicrypt.Encode.B32toB26(r)
     s = minicrypt.Encode.B32toB26(key[4:]) + [0]
     a = minicrypt.Poly1305.BigInt.zero
     p = [67108859, 67108863, 67108863, 67108863, 67108863, 0] //2^130-5
-    for i in range(0, msg.len-1, 4)
-        n = minicrypt.Encode.B32toB26(msg[i:i+4]) + [0]
-        b = 128
-        if i + 4 >= msg.len then
-            n = n + [0] * (6 - n.len % 6)
-            b = (byte_count % 16) * 8
-            if b == 0 then b = 128
-        end if
-        bit = minicrypt.Poly1305.BigInt.pow2(b)
-        n = minicrypt.Poly1305.BigInt.add(n, bit)
-        a = minicrypt.Poly1305.BigInt.add(a, n)
-        // a = (a * r) mod p
-        a = minicrypt.Poly1305.BigInt.multP(a, r, 5, 5, p)
-        
-    end for
+    if msg.len > 0 then
+        for i in range(0, msg.len-1, 4)
+            n = minicrypt.Encode.B32toB26(msg[i:i+4]) + [0]
+            b = 128
+            if i + 4 >= msg.len then
+                n = n + [0] * (6 - n.len % 6)
+                b = (byte_count % 16) * 8
+                if b == 0 then b = 128
+            end if
+            bit = minicrypt.Poly1305.BigInt.pow2(b)
+            n = minicrypt.Poly1305.BigInt.add(n, bit)
+            a = minicrypt.Poly1305.BigInt.add(a, n)
+            // a = (a * r) mod p
+            a = minicrypt.Poly1305.BigInt.multP(a, r, 5, 5, p)
+        end for
+    end if
     a = minicrypt.Poly1305.BigInt.add(a, s)
     return minicrypt.Encode.B26toB32(a)
 end function
@@ -361,6 +364,9 @@ end function
 minicrypt.ChaCha20Poly1305 = {}
 
 // Generates a one-time key for Poly1305 using ChaCha
+// @param {list<number>}   key   - a list of 8 32-bit integers
+// @param {list<number>}   nonce - a list of 3 32-bit integers
+// @returns {list<number>}       - a list of 8 32-bit integers
 minicrypt.ChaCha20Poly1305.keygen = function(key, nonce)
     state = minicrypt.ChaCha.assembleState(key, nonce, 0)
     block = [0] * 16
@@ -368,6 +374,12 @@ minicrypt.ChaCha20Poly1305.keygen = function(key, nonce)
     return block[:8]
 end function
 
+// Assembles the ChaCha20-Poly1305 AEAD (Authenticated Encryption with Associated Data) from its constituent parts
+// @param {list<number>}   aad            - a list of 32-bit integers, any length
+// @param {number}         aad_len        - the length of the aad in bytes
+// @param {list<number>}   ciphertext     - a list of 32-bit integers, any length
+// @param {number}         ciphertext_len - the length of the ciphertext in bytes
+// @returns {list<number>}                - a list of 32-bit integers
 minicrypt.ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
     aad_len32 = aad_len % 4294967296
     ciphertext_len32 = ciphertext_len % 4294967296
@@ -377,7 +389,10 @@ minicrypt.ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_
             [ciphertext_len32] + [(ciphertext_len - ciphertext_len32) / 4294967296]
 end function
 
-// returns [aad, aad_len, ciphertext, ciphertext_len]
+// Splits the AEAD into its components. Returns [aad , aad_len, ciphertext, ciphertext_len] if the AEAD is well-formed, or an error otherwise.
+// @description The AAD and ciphertext can be any length
+// @param {list<number>} aead - a list of 32-bit integers
+// @returns {list | error}    - if not an error, it returns [aad , aad_len, ciphertext, ciphertext_len] -> [list<number>, number, list<number>, number]
 minicrypt.ChaCha20Poly1305.splitAEAD = function(aead)
     if aead.len < 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "short_aead")
     if aead.len % 4 != 0 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "unpadded_aead")
@@ -391,21 +406,40 @@ minicrypt.ChaCha20Poly1305.splitAEAD = function(aead)
     return [aad, aad_len, ciphertext, ciphertext_len]
 end function
 
-// returns [tag, nonce, aead]
+// Splits a ChaCha20-Poly1305 into its components. Returns [tag, nonce, aead] if the message is well-formed, or an error otherwise.
+// @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
+// @param {list<number>} aead - a list of 32-bit integers
+// @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
 minicrypt.ChaCha20Poly1305.splitMessage = function(msg)
     if msg.len < 11 or msg.len % 4 != 3 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitMessage", "malformed_msg")
     return [msg[:4], msg[4:7], msg[7:]]
 end function
 
-//aad_len and ciphertext_len need to be safe integers, so the max size is smaller than in RFC 8439
+// Encrypts and authenticates the plaintext and aad using the provided key and nonce. Returns [aead, tag]
+// @description The AEAD is a list of 32-bit integers of any length depending on the aad and plaintext.
+// @description The tag is a list of 4 32-bit integers, and is the Poly1305 message authentication code computed on the AEAD post-encryption.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @param {number}       aad_len       - the length of 'aad' in bytes
+// @param {list<number>} plaintext     - a list of 32-bit integers, any size
+// @param {number}       plaintext_len - the length of 'plaintext' in bytes
+// @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
 minicrypt.ChaCha20Poly1305.encryptRaw = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
     otk = minicrypt.ChaCha20Poly1305.keygen(key, nonce)
     ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext, plaintext_len, 1)
-    mac_data = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
-    tag = minicrypt.Poly1305.macRaw(otk, mac_data, mac_data.len * 4)
-    return [mac_data, tag]
+    aead = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
+    tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
+    return [aead, tag]
 end function
 
+// Decrypts the AEAD WITHOUT AUTHENTICATING IT using the provided key and nonce. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// @description The aad is a list of 32-bit integers of any length.
+// @description The plaintext is a list of 32-bit integers of any length.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @returns {list | error}             - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number] or an error
 minicrypt.ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
     res = minicrypt.ChaCha20Poly1305.splitAEAD(aead)
     if typeof(res) == "error" then return res
@@ -417,15 +451,30 @@ minicrypt.ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
+// Calculates a message authentication code based on the AEAD. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// @description The aad is a list of 32-bit integers of any length.
+// @description The plaintext is a list of 32-bit integers of any length.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
 minicrypt.ChaCha20Poly1305.verifyRaw = function(key, tag, nonce, aead)
     otk = minicrypt.ChaCha20Poly1305.keygen(key, nonce)
     actual_tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
-    if typeof(actual_tag) == "error" then return false
     return actual_tag == tag
 end function
 
-// if "encoding" is a custom function, it needs to take an arbitrary string and return
-// a list of little-endian 32-bit integers, and the number of bytes.
+// Creates a partially encrypted, authenticated ciphertext from a message and an AAD (additional authenticated data).
+// @description The ciphertext is made of the following parts: the unencrypted AAD, the encrypted message, the nonce, some metadata about the lengths of the various components, and the message authentication code for the AAD + message (not in this order)
+// @description You can also create custom encoding and decoding functions and pass them in the 'plaintext_encoding' / 'ciphertext_encoding' args. Instead of a string, pass a list. The first item should be an encoding funcRef, which takes a value and returns a list of 2 items: a list of 32-bit integers (the encoded value) and its length in bytes. The second item should be a decoding funcRef that takes an encoded value (a list of 32-bit numbers) and its length in bytes, and returns its decoded value.
+// @param {string}           key                    - A hex string, 32 bytes / 64 characters
+// @param {string}           aad                    - Additional Authenticated Data. It will not be encrypted, but will be authenticated.
+// @param {string}           plaintext              - Text to encrypt. By default, it supports the entire range of characters, char(0)-char(65535)
+// @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit" (which covers all useful characters and shortens the ciphertext by 50%). 
+// @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
+// @param {list<number>}     [nonce]                - (optional) If left as null, it generates a safe, synthetic nonce. If you set this manually, DO NOT EVER reuse the same key/nonce pair for another message
+// @returns {string | error}                        - The encryped message with some metadata for decryption: the byte length is the plaintext byte length + 20 bytes. The default format is base64. If something goes wrong, it returns an error object {"classID": "error"} instead.
+// @example ChaCha20Poly1305.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "You can look but ya can't touch", "Secrets secrets...")
 minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
     if typeof(@plaintext_encoding) == "list" then
         encoder = @plaintext_encoding[0]
@@ -472,7 +521,16 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     return ciphertext
 end function
 
-minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
+// Authenticates and decrypts a ciphertext. You can choose to skip the verification, but remember to call ChaCha20Poly1305.verify() manually. Returns [aad, plaintext]
+// @param {string}           key                    - A hex string, 32 bytes / 64 characters
+// @param {string}           ciphertext             - Text to decrypt. By default it expects a base64 string.
+// @param {number}           [do_verify]            - (optional) Boolean. If true (default) then verifies the ciphertext before deciphering. If set to false, it's strongly recommended to manually run ChaCha20Poly1305.verify() before calling this method.
+// @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
+// @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
+// @returns {list | error}                          - [aad, plaintext] -> [string, string] or an error if any verification of decryption step failed
+// @example ChaCha20Poly1305.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
+// @example > ["You can look but ya can't touch", "Secrets secrets..."]
+minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
@@ -506,8 +564,10 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encodin
     nonce_enc = res[1]
     aead_enc = res[2]
 
-    verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
-    if not verify then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "not_verified")
+    if do_verify then
+        verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
+        if not verify then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "not_verified")
+    end if
 
     enc = minicrypt.ChaCha20Poly1305.decryptRaw(key_enc, nonce_enc, aead_enc)
     if typeof(enc) == "error" then return enc
@@ -524,6 +584,14 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, plaintext_encodin
     return [aad, plaintext]
 end function
 
+// Verifies a ciphertext. This method tests the authenticity and integrity of the message.
+// @param {string}           key                    - A hex string, 32 bytes / 64 characters
+// @param {string}           ciphertext             - Text to decrypt. By default it expects a base64 string.
+// @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
+// @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
+// @returns {number}                                - true or false
+// @example ChaCha20Poly1305.verify("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
+// @example > true
 minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
@@ -553,6 +621,13 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
     return verify
 end function
 
+// Obtain the Additional Authenticated Data from a ciphertext. This does not require a key.
+// @param {string}           ciphertext             - Text to decrypt. By default it expects a base64 string.
+// @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
+// @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
+// @returns {string | error}                        - The AAD in plaintext, or an error if the ciphertext is not well-formed
+// @example ChaCha20Poly1305.getAad("CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
+// @example > "You can look but ya can't touch"
 minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
@@ -578,7 +653,11 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     if typeof(res) == "error" then return res
     ciphertext_enc = res[0]
 
-    res = minicrypt.ChaCha20Poly1305.splitAEAD(ciphertext_enc)
+    res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
+    if typeof(res) == "error" then return res
+    aead_enc = res[2]
+
+    res = minicrypt.ChaCha20Poly1305.splitAEAD(aead_enc)
     if typeof(res) == "error" then return res
 
     aad_enc = res[0]

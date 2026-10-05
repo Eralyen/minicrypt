@@ -19,7 +19,9 @@ minicrypt.Encode.BYTE2HEX = ["00","01","02","03","04","05","06","07","08","09","
 minicrypt.Encode.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496]
 
 
-// Takes a string and returns a list of 32-bit numbers
+// Takes a string and returns a list of 32-bit numbers. 16 bits per character, the default Grey Hack string encoding. Returns [output, byte_len]
+// @param {string} text - any string
+// @returns {list}      - [output, byte_len] -> [list<number>, number]
 minicrypt.Encode.encodeText16 = function(text)
     output = []
     if text.len == 0 then return [output, 0]
@@ -32,7 +34,9 @@ minicrypt.Encode.encodeText16 = function(text)
     return [output, text.len*2]
 end function
 
-// Takes a string and returns a list of 32-bit numbers
+// Takes a string and returns a list of 32-bit numbers. 8 bits per character. Returns [output, byte_len]
+// @param {string} text - any string
+// @returns {list}      - [output, byte_len] -> [list<number>, number]
 minicrypt.Encode.encodeText8 = function(text)
     output = []
     if text.len == 0 then return output
@@ -49,7 +53,10 @@ minicrypt.Encode.encodeText8 = function(text)
     return [output, text.len]
 end function
 
-// Takes a list of 32-bit numbers and returns a string
+// Takes a list of 32-bit numbers and returns a string. 16 bits per character, the default Grey Hack string encoding. If any one character would throw a runtime error (char codes between 55296 and 57343) it returns an error.
+// @param {list<number>} input - a list of 32-bit integers
+// @param {number}       len   - the length of the input in bytes
+// @returns {string}           - the decoded string
 minicrypt.Encode.decodeText16 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText16", "length_mismatch")
@@ -65,7 +72,10 @@ minicrypt.Encode.decodeText16 = function(input, len)
     return text
 end function
 
-// Takes a list of 32-bit numbers and returns a string
+// Takes a list of 32-bit numbers and returns a string. 8 bits per character.
+// @param {list<number>} input - a list of 32-bit integers
+// @param {number}       len   - the length of the input in bytes
+// @returns {string}           - the decoded string
 minicrypt.Encode.decodeText8 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText8", "length_mismatch")
@@ -84,6 +94,9 @@ minicrypt.Encode.decodeText8 = function(input, len)
     return text
 end function
 
+// Turns a big integer from base 2^32 to base 2^26, which enables big integer math
+// @param {list<number>} bi32   - a list of 32-bit integers
+// @returns {list<number>}      - a list of 26-bit integers
 minicrypt.Encode.B32toB26 = function(bi32)
     bi26 = [0] * ceil(bi32.len/26*32)
     low = 0
@@ -106,6 +119,9 @@ minicrypt.Encode.B32toB26 = function(bi32)
     return bi26
 end function
 
+// Turns a big integer from base 2^26 to base 2^32
+// @param {list<number>} bi26   - a list of 26-bit integers
+// @returns {list<number>}      - a list of 32-bit integers
 minicrypt.Encode.B26toB32 = function(bi26)
     bi32 = [0] * floor(bi26.len * 26 / 32) // The usage of floor() assumes that the original number had radix 2^32 and therefore the 26-bit representation is generally not used to capacity
     low = 0
@@ -133,8 +149,10 @@ minicrypt.Encode.B26toB32 = function(bi26)
     return bi32
 end function
 
-// Takes a list of 32-bit numbers and returns a Base64 string
-// len is the original UTF-16 string length (each char = 2 bytes)
+// Takes a list of 32-bit numbers and returns a base64 string
+// @param {list<number>} input - a list of 32-bit integers
+// @param {number}       len   - the length of 'input' in bytes
+// @returns {string}           - the base64 representation of the input 
 minicrypt.Encode.toBase64 = function(input, len)
     if input.len == 0 then return ""
     I2B64 = minicrypt.Encode.INT2B64
@@ -176,9 +194,11 @@ minicrypt.Encode.toBase64 = function(input, len)
     return b64
 end function
 
-// Decodes Base64 into a list of 32-bit numbers
+// Decodes base64 into a list of 32-bit numbers and its length in bytes. Returns [output, byte_len] if the string is valid.
+// @param {string} b64 - the base64 string
+// @returns {list | error | null}     - Returns [output, byte_len] -> [list<number>, number] if 'b64' is valid. Returns null if 'b64' is not a string, or an error object if it's not a valid base64 string (invalid character or invalid padding)
 minicrypt.Encode.fromBase64 = function(b64)
-    if b64 == null or typeof(b64) != "string" then return null
+    if typeof(b64) != "string" then return null
     if b64.len % 4 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_length")
     if b64.len == 0 then return ["", 0]
 
@@ -230,6 +250,9 @@ minicrypt.Encode.fromBase64 = function(b64)
     return [out, bytes.len]
 end function
 
+// Turns a hex string into a list of 32-bit integers.
+// @param {string}                        h - the hex string
+// @returns {list<number> | null | error}   - returns null if h is not a string, error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
 minicrypt.Encode.hexToB32 = function(h)
     if typeof(h) != "string" then return null
     if h.len >= 2 and h[:2] == "0x" then h = h[2:]
@@ -240,8 +263,12 @@ minicrypt.Encode.hexToB32 = function(h)
         x = 0
         for j in range(0, 7, 2)
             if i + j >= h.len then break
+            if not HEX2INT.hasIndex(h[i+j]) then return minicrypt.Error("minicrypt.Encode.hexToB32", "invalid_char")
             byte = HEX2INT[h[i+j]] * 16
-            if i + j + 1 < h.len then byte = byte + HEX2INT[h[i+j+1]]
+            if i + j + 1 < h.len then
+                if not HEX2INT.hasIndex(h[i+j+1]) then return minicrypt.Error("minicrypt.Encode.hexToB32", "invalid_char")
+                byte = byte + HEX2INT[h[i+j+1]]
+            end if
             x = x + byte * minicrypt.Encode.POW2[j*4]
         end for
         output.push(x)
@@ -249,15 +276,20 @@ minicrypt.Encode.hexToB32 = function(h)
     return output
 end function
 
-// state = 16 numbers, 32-bit
-minicrypt.Encode.B32ToHex = function(state)
+// Turns a list of 32-bit integers into a hex string
+// @param {list<number>} input - a list of 32-bit integers
+// @returns {string}           - the hex string
+minicrypt.Encode.B32ToHex = function(input)
     output = []
-    for s in state
-        output.push(minicrypt.Encode.intToHex(s))
+    for x in input
+        output.push(minicrypt.Encode.intToHex(x))
     end for
     return output
 end function
 
+// Turns a 32-bit integer into a hex string
+// @param {number}   n - a 32-bit integer
+// @returns {string}   - the hex string
 minicrypt.Encode.intToHex = function(n)
     h = ""
     for i in range(0, 7)
@@ -269,6 +301,8 @@ end function
 
 // Deserialization from test vector format to lists of 32-bit numbers
 // Input format: 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
+// @param {string} txt     - the hex bytes
+// @returns {list<number>} - a list of 32-bit integers
 minicrypt.Encode.hexBytesToB32 = function(txt)
     min = function(a, b)
         if a <= b then return a

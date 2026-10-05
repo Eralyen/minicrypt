@@ -357,7 +357,8 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     mac = minicrypt.Poly1305.macRaw(key_enc, ciphertext_enc, ciphertext_len)
     if typeof(mac) == "error" then return mac
 
-    return decoder(mac)
+    if typeof(@mac_encoding) == "list" then return decoder(mac)
+    return decoder(mac, 16)
 end function
 
 // ----------
@@ -508,7 +509,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     plaintext_enc = enc[0]
     plaintext_len_bytes = enc[1]
 
-    if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(key)
+    if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
     if nonce == null then nonce = minicrypt.ChaCha.getSyntheticNonce(key_enc, plaintext_enc)
     
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 

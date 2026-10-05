@@ -1,5 +1,7 @@
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
+import_code("./error.ms")
+
 __scope = function //-------------
 
 minicrypt.Encode = {}
@@ -39,7 +41,7 @@ end function
 // @returns {list}      - [output, byte_len] -> [list<number>, number]
 minicrypt.Encode.encodeText8 = function(text)
     output = []
-    if text.len == 0 then return output
+    if text.len == 0 then return [output, 0]
     for i in range(0, text.len - 1, 4)
         c1 = code(text[i])
         c2 = 0
@@ -80,16 +82,13 @@ minicrypt.Encode.decodeText8 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText8", "length_mismatch")
     if input.len == 0 then return ""
-    for i in range(0, len-1, 4)
-        n = input[i/4]
-        n0 = n % 256 ; n = (n - n0) / 256
-        n1 = n % 256 ; n = (n - n1) / 256
-        n2 = n % 256 ; n = (n - n2) / 256
-        n3 = n % 256 ; n = (n - n3) / 256
-        text = text + char(n0)
-        if i+1 < len then text = text + char(n1)
-        if i+2 < len then text = text + char(n2)
-        if i+3 < len then text = text + char(n3)
+    for i in range(0, input.len-1)
+        n = input[i]
+        for j in range(0, 3)
+            if i*4 + j >= len then break
+            text = text + char(n % 256)
+            n = floor(n / 256)
+        end for
     end for
     return text
 end function
@@ -165,7 +164,7 @@ minicrypt.Encode.toBase64 = function(input, len)
         bytes.push(floor(val / 65536) % 256)
         bytes.push(floor(val / 16777216) % 256)
     end for
-    if len then bytes = bytes[:len]
+    if len != null then bytes = bytes[:len]
     b64 = ""
     for i in range(0, bytes.len - 1, 3)
         if i >= bytes.len then break
@@ -200,7 +199,7 @@ end function
 minicrypt.Encode.fromBase64 = function(b64)
     if typeof(b64) != "string" then return null
     if b64.len % 4 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_length")
-    if b64.len == 0 then return ["", 0]
+    if b64.len == 0 then return [[], 0]
 
     I2B64 = minicrypt.Encode.INT2B64
     bytes = []
@@ -229,6 +228,9 @@ minicrypt.Encode.fromBase64 = function(b64)
             if v3 == null then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_char")
         end if
         if c2 == "=" and c3 != "=" then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_padding")
+        if padCt > 0 and i + 4 < b64.len then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_padding")
+        if c2 == "=" and v1 % 16 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_padding")
+        if c3 == "=" and c2 != "=" and v2 % 4 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_padding")
         val = v0 * 262144 + v1 * 4096 + v2 * 64 + v3
         bytes.push(floor(val / 65536) % 256)
         if padCt < 2 then bytes.push(floor(val / 256) % 256)

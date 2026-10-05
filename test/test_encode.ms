@@ -60,6 +60,46 @@ TEST "ENCODE - Encode.fromBase64", function
                                                   [4078784323, 3787266857, 1866653276, 3980223449, 2188448744, 3794152570, 3970912016, 2025583602, 2741976039, 2456772636, 3444865498, 888482765, 1087261713, 3444653798, 1280254342, 3072359811, 2668078665, 1096835929, 685689349, 2130529749, 1829688326, 1942337814, 988146106, 1165560999, 3657534284, 2302706558, 3452594094, 723000822, 51471233, 2704941066, 3906206717, 3991179606, 1281944996, 1088721742, 3783357791, 3851833447, 1191161536, 1256017377, 2947295481, 3495119398, 2905043554, 2968244184, 1750625517, 1705690631, 3406069800, 397451706, 3170188596, 319149437, 3885421532, 1550618015, 673801488, 2478531674, 1163329293, 1990375181, 2699523328, 22770060, 36327])
 end function
 
+TEST "ENCODE - Text encoding boundaries", function
+    expectEqual(minicrypt.Encode.encodeText8(""), [[], 0])
+    expectEqual(minicrypt.Encode.encodeText8("abcde"), [[1684234849, 101], 5])
+    expectEqual(minicrypt.Encode.decodeText8([1684234849, 101], 5), "abcde")
+    expectEqual(minicrypt.Encode.encodeText16(""), [[], 0])
+    expectEqual(minicrypt.Encode.encodeText16("abc"), [[6422625, 99], 6])
+    expectEqual(minicrypt.Encode.decodeText16([6422625, 99], 6), "abc")
+    expectEqual(typeof(minicrypt.Encode.decodeText8([0], 0)), "error")
+    expectEqual(typeof(minicrypt.Encode.decodeText16([], 1)), "error")
+    expectEqual(typeof(minicrypt.Encode.decodeText16([55296], 2)), "error")
+end function
+
+TEST "ENCODE - Base64 padding and explicit lengths", function
+    expectEqual(minicrypt.Encode.toBase64([67305985], 0), "")
+    expectEqual(minicrypt.Encode.toBase64([67305985]), "AQIDBA==")
+    expectEqual(minicrypt.Encode.fromBase64("AQ=="), [[1], 1])
+    expectEqual(minicrypt.Encode.fromBase64("AQI="), [[513], 2])
+    expectEqual(minicrypt.Encode.fromBase64("AQID"), [[197121], 3])
+    expectEqual(minicrypt.Encode.fromBase64("AQIDBA=="), [[67305985], 4])
+    expectEqual(minicrypt.Encode.fromBase64(""), [[], 0])
+
+    expectEqual(typeof(minicrypt.Encode.fromBase64("Zg==AAAA")), "error")
+    expectEqual(typeof(minicrypt.Encode.fromBase64("Zm=8")), "error")
+    expectEqual(typeof(minicrypt.Encode.fromBase64("AB==")), "error")
+    expectEqual(typeof(minicrypt.Encode.fromBase64("AAB=")), "error")
+    expectEqual(typeof(minicrypt.Encode.fromBase64("abc")), "error")
+    expectEqual(typeof(minicrypt.Encode.fromBase64("!!!!")), "error")
+    expectEqual(minicrypt.Encode.fromBase64(123), null)
+end function
+
+TEST "ENCODE - Hex conversion boundaries", function
+    expectEqual(minicrypt.Encode.hexToB32("0x0123456789abcdef"), [1732584193, 4023233417])
+    expectEqual(minicrypt.Encode.hexToB32("a"), [160])
+    expectEqual(minicrypt.Encode.hexToB32(""), [0])
+    expectEqual(minicrypt.Encode.hexToB32(12), null)
+    expectEqual(typeof(minicrypt.Encode.hexToB32("01xz")), "error")
+    expectEqual(minicrypt.Encode.B32ToHex([0, 1, 4294967295]), ["00000000", "00000001", "ffffffff"])
+    expectEqual(minicrypt.Encode.hexBytesToB32("00:01:02:03:04"), [50462976, 4])
+end function
+
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS
     print "<color=green>Done!"

@@ -37,7 +37,7 @@ minicrypt.Utils.hexdump = function(b64)
         line = minicrypt.Encode.intToHex(i) + "  "
         block = bytes[i:i+16]
         for b in block
-            line = line + minicrypt.Encode.byteToHex(b) + " "
+            line = line + minicrypt.Encode.BYTE2HEX[b] + " "
         end for
         line = line + "   " * (16 - block.len)
         line = line[:34] + " " + line[34:] + " |"

@@ -27,6 +27,7 @@ minicrypt.Encode.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096
 minicrypt.Encode.encodeText16 = function(text)
     output = []
     if text.len == 0 then return [output, 0]
+    if text.len > 8388608 then return minicrypt.Error("minicrypt.Encode.encodeText16", "max_len_exceeded") // 8388608 = 2^24 / 2 (because 2 bytes per character)
     for i in range(0, text.len - 1, 2)
         c1 = code(text[i])
         c2 = 0
@@ -42,6 +43,7 @@ end function
 minicrypt.Encode.encodeText8 = function(text)
     output = []
     if text.len == 0 then return [output, 0]
+    if text.len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeText16", "max_len_exceeded") // 16777216 = 2^24 (because 1 byte per character)
     for i in range(0, text.len - 1, 4)
         c1 = code(text[i])
         c2 = 0
@@ -57,11 +59,12 @@ end function
 
 // Takes a list of 32-bit numbers and returns a string. 16 bits per character, the default Grey Hack string encoding. If any one character would throw a runtime error (char codes between 55296 and 57343) it returns an error.
 // @param {list<number>} input - a list of 32-bit integers
-// @param {number}       len   - the length of the input in bytes
+// @param {number}       len   - the length of the input in bytes. Max 2^24
 // @returns {string}           - the decoded string
 minicrypt.Encode.decodeText16 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText16", "length_mismatch")
+    if len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeText16", "max_len_exceeded") // 16777216 = 2^24
     if input.len == 0 then return ""
     for i in range(0, input.len-1)
         n_low = input[i] % 65536
@@ -76,11 +79,12 @@ end function
 
 // Takes a list of 32-bit numbers and returns a string. 8 bits per character.
 // @param {list<number>} input - a list of 32-bit integers
-// @param {number}       len   - the length of the input in bytes
+// @param {number}       len   - the length of the input in bytes. Max 2^24
 // @returns {string}           - the decoded string
 minicrypt.Encode.decodeText8 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText8", "length_mismatch")
+    if len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeText8", "max_len_exceeded") // 16777216 = 2^24
     if input.len == 0 then return ""
     for i in range(0, input.len-1)
         n = input[i]
@@ -150,10 +154,11 @@ end function
 
 // Takes a list of 32-bit numbers and returns a base64 string
 // @param {list<number>} input - a list of 32-bit integers
-// @param {number}       len   - the length of 'input' in bytes
+// @param {number}       len   - the length of 'input' in bytes. Max 2^24
 // @returns {string}           - the base64 representation of the input 
 minicrypt.Encode.toBase64 = function(input, len)
     if input.len == 0 then return ""
+    if len > 16777216 then return minicrypt.Error("minicrypt.Encode.toBase64", "max_len_exceeded") // 16777216 = 2^24
     I2B64 = minicrypt.Encode.INT2B64
     bytes = []
     for w in input
@@ -200,6 +205,7 @@ minicrypt.Encode.fromBase64 = function(b64)
     if typeof(b64) != "string" then return null
     if b64.len % 4 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_length")
     if b64.len == 0 then return [[], 0]
+    if ceil((b64.len / 8) * 6) > 16777216 then return minicrypt.Error("minicrypt.Encode.fromBase64", "max_len_exceeded")
 
     I2B64 = minicrypt.Encode.INT2B64
     bytes = []

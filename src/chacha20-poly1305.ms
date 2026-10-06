@@ -158,19 +158,23 @@ minicrypt.ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
     return output
 end function
 
-// Creates a safe, synthetic nonce if the user is unable to provide one that is categorically unique
-// @params {list<number>}  key       - a list of 8 32-bit integers.
+// Creates a safe nonce (partially random, partially derived from the plaintext) if the user is unable to provide one with this key property: if plaintext1 -> nonce1 and plaintext2 -> nonce2, then if plaintext1 != plaintext2 then it's extremely unlikely that nonce1 == nonce2
 // @params {list<number>}  plaintext - a list of 32-bit integers.
 // @returns {list<number>}           - a list of 3 32-bit integers
-minicrypt.ChaCha.getSyntheticNonce = function(key, plaintext)
-    s = plaintext + key + [current_date] + [rnd]
-    nonce = [hash(s), hash(s + key), hash(s + plaintext)]
-    nonce[0] = nonce[0] % 4294967296 // 2^32
-    nonce[1] = nonce[1] % 4294967296
-    nonce[2] = nonce[2] % 4294967296
-    if nonce[0] < 0 then nonce[0] = nonce[0] + 4294967296
-    if nonce[1] < 0 then nonce[1] = nonce[1] + 4294967296
-    if nonce[2] < 0 then nonce[2] = nonce[2] + 4294967296
+minicrypt.ChaCha.getHedgedNonce = function(plaintext)
+    key = []
+    for i in range(8)
+        key.push(floor(rnd * 4294967296)) //2^32
+    end for
+    otn = [hash(plaintext) % 4294967296,
+        hash(plaintext + [0]) % 4294967296,
+        hash(plaintext + [1]) % 4294967296,
+        ]
+    if otn[0] < 0 then otn[0] = otn[0] + 4294967296
+    if otn[1] < 0 then otn[1] = otn[1] + 4294967296
+    if otn[2] < 0 then otn[2] = otn[2] + 4294967296
+    zeros = [0, 0, 0]
+    nonce = minicrypt.ChaCha.chacha(key, otn, zeros, 12)
     return nonce
 end function
 
@@ -213,7 +217,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     plaintext_len = res[1]
 
     if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
-    if nonce == null then nonce = minicrypt.ChaCha.getSyntheticNonce(key_enc, plaintext_enc)
+    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(plaintext_enc)
 
     ciphertext_enc = minicrypt.ChaCha.chacha(key_enc, nonce, plaintext_enc, plaintext_len, counter)
     plaintext_len32 = plaintext_len % 4294967296
@@ -510,7 +514,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     plaintext_len_bytes = enc[1]
 
     if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
-    if nonce == null then nonce = minicrypt.ChaCha.getSyntheticNonce(key_enc, plaintext_enc)
+    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(plaintext_enc)
     
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
                                       aad_enc, aad_len_bytes, 
@@ -671,5 +675,3 @@ end function //-------------
 
 if not minicrypt.hasIndex("ChaCha20Poly1305") then __scope()
 globals.remove("__scope")
-
-// Don't forget the comments at the beginning of the file <---------------------------------------------------------------------------

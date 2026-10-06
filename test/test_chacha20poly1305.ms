@@ -180,7 +180,7 @@ end function
 TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", function
     key = minicrypt.Encode.hexToB32("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
     plaintext = minicrypt.Encode.encodeText8("nonce source")[0]
-    nonce = minicrypt.ChaCha.getSyntheticNonce(key, plaintext)
+    nonce = minicrypt.ChaCha.getHedgedNonce(plaintext)
     expectEqual(nonce.len, 3, "Synthetic nonce has three words")
     for word in nonce
         expectTrue(word >= 0 and word < 4294967296, "Synthetic nonce word is 32-bit")

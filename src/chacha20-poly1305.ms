@@ -479,14 +479,14 @@ end function
 // @description The ciphertext is made of the following parts: the unencrypted AAD, the encrypted message, the nonce, some metadata about the lengths of the various components, and the message authentication code for the AAD + message (not in this order)
 // @description You can also create custom encoding and decoding functions and pass them in the 'plaintext_encoding' / 'ciphertext_encoding' args. Instead of a string, pass a list. The first item should be an encoding funcRef, which takes a value and returns a list of 2 items: a list of 32-bit integers (the encoded value) and its length in bytes. The second item should be a decoding funcRef that takes an encoded value (a list of 32-bit numbers) and its length in bytes, and returns its decoded value.
 // @param {string}           key                    - A hex string, 32 bytes / 64 characters
-// @param {string}           aad                    - Additional Authenticated Data. It will not be encrypted, but will be authenticated.
 // @param {string}           plaintext              - Text to encrypt. By default, it supports the entire range of characters, char(0)-char(65535)
+// @param {string}           [aad]                  - (optional) Additional Authenticated Data. It will not be encrypted, but will be authenticated.
 // @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit" (which covers all useful characters and shortens the ciphertext by 50%). 
 // @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
 // @param {list<number>}     [nonce]                - (optional) If left as null, it generates a safe, synthetic nonce. If you set this manually, DO NOT EVER reuse the same key/nonce pair for another message
 // @returns {string | error}                        - The encryped message with some metadata for decryption: the byte length is the plaintext byte length + 20 bytes. The default format is base64. If something goes wrong, it returns an error object {"classID": "error"} instead.
 // @example ChaCha20Poly1305.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "You can look but ya can't touch", "Secrets secrets...")
-minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
+minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
     if typeof(@plaintext_encoding) == "list" then
         encoder = @plaintext_encoding[0]
     else if plaintext_encoding == "16bit" then

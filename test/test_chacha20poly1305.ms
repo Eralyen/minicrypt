@@ -89,7 +89,7 @@ TEST "CHACHA20-POLY1305 - High-level encodings and authentication", function
     aad = "A" + char(0) + char(233)
     plaintext = "B" + char(0) + char(233) + char(65535)
 
-    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, "16bit", "base64", nonce)
+    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "16bit", "base64", nonce)
     expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext), [aad, plaintext], "Default encoding round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext), "Default encoding authenticates")
     expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext), aad, "Default encoding retrieves AAD")
@@ -104,14 +104,14 @@ TEST "CHACHA20-POLY1305 - High-level encodings and authentication", function
     expectFalse(minicrypt.ChaCha20Poly1305.verify("0000000000000000000000000000000000000000000000000000000000000000", ciphertext), "Reject wrong key")
 
     plaintext = "8-bit plaintext"
-    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, "", plaintext, "8bit", "8bit", [4, 5, 6])
+    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, "", "8bit", "8bit", [4, 5, 6])
     expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "8bit"), ["", plaintext], "8-bit transport round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "8bit"), "8-bit transport authenticates")
     expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "8bit", "8bit"), "", "8-bit transport retrieves empty AAD")
 
     for plaintext_len in [1, 15, 16, 17, 63, 64, 65]
         plaintext = "x" * plaintext_len
-        ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, "boundary", plaintext, "8bit", "base64", [plaintext_len, 10, 11])
+        ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, "boundary", "8bit", "base64", [plaintext_len, 10, 11])
         expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit"), ["boundary", plaintext], "Plaintext byte length " + str(plaintext_len))
         expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext), "Authenticates plaintext byte length " + str(plaintext_len))
     end for
@@ -151,8 +151,8 @@ TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
     aad = "custom aad"
     plaintext = "custom encoded plaintext"
 
-    ciphertext_from_list = minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, "8bit", "base64", nonce)
-    ciphertext_from_hex = minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, "8bit", "base64", nonce_hex)
+    ciphertext_from_list = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "base64", nonce)
+    ciphertext_from_hex = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "base64", nonce_hex)
     decoded = minicrypt.Encode.fromBase64(ciphertext_from_hex)
     parts = minicrypt.ChaCha20Poly1305.splitMessage(decoded[0])
     expectEqual(parts[1], nonce, "Hex nonce is encoded as supplied")
@@ -160,7 +160,7 @@ TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
 
     custom_text_encoding = [@minicrypt.Encode.encodeText8, @minicrypt.Encode.decodeText8]
     custom_ciphertext_encoding = [@minicrypt.Encode.fromBase64, @minicrypt.Encode.toBase64]
-    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, custom_text_encoding, custom_ciphertext_encoding, nonce)
+    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, custom_text_encoding, custom_ciphertext_encoding, nonce)
     expectEqual(
         minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, custom_text_encoding, custom_ciphertext_encoding),
         [aad, plaintext],
@@ -169,8 +169,8 @@ TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, custom_ciphertext_encoding), "Custom ciphertext encoding verifies")
     expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, custom_text_encoding, custom_ciphertext_encoding), aad, "Custom encoding retrieves AAD")
 
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, "unknown")), "null", "Reject unknown plaintext encoding")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext, "8bit", "unknown")), "null", "Reject unknown ciphertext encoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "unknown")), "null", "Reject unknown plaintext encoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "unknown")), "null", "Reject unknown ciphertext encoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "unknown")), "null", "Reject unknown plaintext decoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "unknown")), "null", "Reject unknown ciphertext decoding")
     expectEqual(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "unknown"), null, "Reject unknown verification encoding")
@@ -187,7 +187,7 @@ TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", function
     end for
 
     key_hex = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
-    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key_hex, "", "split", "8bit", "base64", [1, 2, 3])
+    ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key_hex, "split", "", "8bit", "base64", [1, 2, 3])
     encoded = minicrypt.Encode.fromBase64(ciphertext)
     message = minicrypt.ChaCha20Poly1305.splitMessage(encoded[0])
     expectEqual(message[0].len, 4, "Message includes four tag words")
@@ -202,7 +202,7 @@ TEST "CHACHA20-POLY1305 - Malformed AEAD", function
     aad = "Visible text"
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
 
-    ciphertext_b64 = minicrypt.ChaCha20Poly1305.encrypt(key, aad, plaintext)
+    ciphertext_b64 = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad)
     ciphertext = minicrypt.Encode.fromBase64(ciphertext_b64)[0]
 
     res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext)

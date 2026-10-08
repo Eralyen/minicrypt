@@ -121,7 +121,7 @@ while true
         if u == 3 then key = user_input("Secret key (hex, 64 characters)> ")
         if u == 4 then
             start = time
-            msg = c20p.encrypt(key, aad, plaintext, "8bit")
+            msg = c20p.encrypt(key, plaintext, aad, "8bit")
             encryption_time = time - start
             if typeof(msg) == "error" then
                 print "<color=red>" + msg.code

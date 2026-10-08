@@ -10,4 +10,4 @@ print encrypted_message
 decrypted = c20p.decrypt(key, encrypted_message)
 
 print decrypted
-// ["Additional Authenticated Data (this does not get encrypted)", "My secret message"]
+// ["My secret message", "Additional Authenticated Data (this does not get encrypted)"]

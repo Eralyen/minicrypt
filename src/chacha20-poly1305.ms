@@ -540,9 +540,9 @@ end function
 // @param {number}           [do_verify]            - (optional) Boolean. If true (default) then verifies the ciphertext before deciphering. If set to false, it's strongly recommended to manually run ChaCha20Poly1305.verify() before calling this method.
 // @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
 // @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
-// @returns {list | error}                          - [aad, plaintext] -> [string, string] or an error if any verification of decryption step failed
+// @returns {list | error}                          - [plaintext, aad] -> [string, string] or an error if any verification of decryption step failed
 // @example ChaCha20Poly1305.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
-// @example > ["You can look but ya can't touch", "Secrets secrets..."]
+// @example > ["Secrets secrets...", "You can look but ya can't touch"]
 minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
@@ -596,7 +596,7 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true,
     if typeof(aad) == "error" then return aad
     if typeof(plaintext) == "error" then return plaintext
 
-    return [aad, plaintext]
+    return [plaintext, aad]
 end function
 
 // Verifies a ciphertext. This method tests the authenticity and integrity of the message.

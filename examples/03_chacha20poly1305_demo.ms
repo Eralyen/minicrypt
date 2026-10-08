@@ -214,7 +214,7 @@ while true
                 print "<color=red>" + decrypted.code
                 wait(1)
             else
-                decrypted = decrypted[1]
+                decrypted = decrypted[0]
                 break
             end if
         end if

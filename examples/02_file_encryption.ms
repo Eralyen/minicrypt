@@ -19,8 +19,8 @@ encrypted = file.get_content
 
 if c20p.verify(key, encrypted) then
     decrypted = c20p.decrypt(key, encrypted)
-    aad = decrypted[0]
-    plaintext = decrypted[1]
+    plaintext = decrypted[0]
+    aad = decrypted[1]
     print "AAD: " + aad
     file.set_content(plaintext)
 else

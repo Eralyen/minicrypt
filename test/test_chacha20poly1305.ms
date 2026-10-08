@@ -139,8 +139,8 @@ TEST "CHACHA20-POLY1305 - Poly1305.mac encodings", function
     custom_mac = minicrypt.Poly1305.mac(key, message, custom_text_encoding, "base64")
     expectEqual(minicrypt.Encode.fromBase64(custom_mac)[0], expected, "Custom input encoding")
 
-    expectEqual(minicrypt.Poly1305.mac(key, message, "unknown"), null, "Reject unknown input encoding")
-    expectEqual(minicrypt.Poly1305.mac(key, message, "8bit", "unknown"), null, "Reject unknown output encoding")
+    expectEqual(typeof(minicrypt.Poly1305.mac(key, message, "unknown")), "error", "Reject unknown input encoding")
+    expectEqual(typeof(minicrypt.Poly1305.mac(key, message, "8bit", "unknown")), "error", "Reject unknown output encoding")
     expectEqual(minicrypt.Poly1305.mac(key, "!", "base64"), false, "Reject malformed Base64 input")
 end function
 
@@ -169,12 +169,12 @@ TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, custom_ciphertext_encoding), "Custom ciphertext encoding verifies")
     expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, custom_text_encoding, custom_ciphertext_encoding), aad, "Custom encoding retrieves AAD")
 
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "unknown")), "null", "Reject unknown plaintext encoding")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "unknown")), "null", "Reject unknown ciphertext encoding")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "unknown")), "null", "Reject unknown plaintext decoding")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "unknown")), "null", "Reject unknown ciphertext decoding")
-    expectEqual(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "unknown"), null, "Reject unknown verification encoding")
-    expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "unknown"), null, "Reject unknown AAD decoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "unknown")), "error", "Reject unknown plaintext encoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "unknown")), "error", "Reject unknown ciphertext encoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "unknown")), "error", "Reject unknown plaintext decoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "unknown")), "error", "Reject unknown ciphertext decoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "unknown")), "error", "Reject unknown verification encoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "unknown")), "error", "Reject unknown AAD decoding")
 end function
 
 TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", function

@@ -64,7 +64,7 @@ end function
 // @param {number}       j - the second index
 // @param {number}       k - the third  index
 // @param {number}       l - the fourth index
-// @eturns {null}
+// @returns {null}
 minicrypt.ChaCha.QR = function(x, i, j, k, l)
     xor32 = @minicrypt.ChaCha.xor32
     ROTL = @minicrypt.ChaCha.ROTL
@@ -196,7 +196,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     else if plaintext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
     end if
 
     if typeof(@ciphertext_encoding) == "list" then
@@ -206,7 +206,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     else if ciphertext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
     end if
     
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.encrypt", "incorrect_key_length")
@@ -248,7 +248,7 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha.decrypt", "unsupported_encoding")
     end if
 
     if typeof(@plaintext_encoding) == "list" then
@@ -258,7 +258,7 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
     else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha.decrypt", "unsupported_encoding")
     end if
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "incorrect_key_length")
@@ -342,7 +342,7 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
     end if
 
     if typeof(@mac_encoding) == "list" then
@@ -352,7 +352,7 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     else if mac_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
     end if
 
     if key.len != 64 then return minicrypt.Error("minicrypt.Poly1305.mac", "incorrect_key_length")
@@ -494,7 +494,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     else if plaintext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
     end if
 
     if typeof(@ciphertext_encoding) == "list" then
@@ -504,7 +504,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     else if ciphertext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
     end if
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "incorrect_key_length")
@@ -551,7 +551,7 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true,
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     end if
 
     if typeof(@plaintext_encoding) == "list" then
@@ -561,7 +561,7 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true,
     else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     end if
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "incorrect_key_length")
@@ -604,7 +604,7 @@ end function
 // @param {string}           ciphertext             - Text to decrypt. By default it expects a base64 string.
 // @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
 // @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
-// @returns {number}                                - true or false
+// @returns {number | error}                        - boolean, or error if ciphertext_encoding is not supported
 // @example ChaCha20Poly1305.verify("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
 // @example > true
 minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encoding = "base64")
@@ -615,7 +615,7 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "unsupported_encoding")
     end if
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "incorrect_key_length")
@@ -653,7 +653,7 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAad", "unsupported_encoding")
     end if
 
     if typeof(@plaintext_encoding) == "list" then
@@ -663,7 +663,7 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return null
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAad", "unsupported_encoding")
     end if
 
     res = encoder(ciphertext)

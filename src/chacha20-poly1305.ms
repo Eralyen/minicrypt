@@ -522,7 +522,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, aad, plaintext, plaintext_enc
     plaintext_len_bytes = enc[1]
 
     if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
-    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(plaintext_enc)
+    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(aad_enc + plaintext_enc)
     
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
                                       aad_enc, aad_len_bytes, 

@@ -1,5 +1,5 @@
 globals.isGH = true
-import_code("./MiniTest.src")
+import_code("./MiniTest/MiniTest.src")
 import_code("../src/chacha20-poly1305.ms")
 import_code("../src/encode.ms")
 

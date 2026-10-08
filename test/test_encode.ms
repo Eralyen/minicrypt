@@ -1,5 +1,5 @@
 globals.isGH = true
-import_code("./MiniTest.src")
+import_code("./MiniTest/MiniTest.src")
 import_code("../src/encode.ms")
 
 TEST "ENCODE - Encode.B32toB26", function

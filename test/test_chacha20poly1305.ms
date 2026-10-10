@@ -3,7 +3,7 @@ import_code("./MiniTest/MiniTest.src")
 import_code("../src/chacha20-poly1305.ms")
 import_code("../src/encode.ms")
 
-TEST "CHACHA20-POLY1305 - ChaCha.encrypt - ChaCha.decrypt", function
+test_chacha20poly1305_encrypt_decrypt = function
     minicrypt.ChaCha.ROUNDS = 20
     key = "00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f".replace(":", "")
     nonce = "00:00:00:00:00:00:00:4a:00:00:00:00".replace(":", "")
@@ -34,8 +34,9 @@ TEST "CHACHA20-POLY1305 - ChaCha.encrypt - ChaCha.decrypt", function
     expectEqual(minicrypt.Encode.fromBase64(ciphertext)[1]-20, plaintext.len*2, "Base64 ciphertext length")
     expectEqual(deciphered, plaintext, "Successive encryption and decryption 4")
 end function
+TEST "CHACHA20-POLY1305 - ChaCha.encrypt - ChaCha.decrypt", @test_chacha20poly1305_encrypt_decrypt
 
-TEST "CHACHA20-POLY1305 - ChaCha20Poly1305.*Raw", function
+test_chacha20poly1305_raw_aead = function
     plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[0]
     plaintext_len = 114
     aad = minicrypt.Encode.hexBytesToB32("50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7")
@@ -65,8 +66,9 @@ TEST "CHACHA20-POLY1305 - ChaCha20Poly1305.*Raw", function
     deciphered = res[2]
     expectEqual(deciphered, plaintext, "Deciphered text matches")
 end function
+TEST "CHACHA20-POLY1305 - ChaCha20Poly1305.*Raw", @test_chacha20poly1305_raw_aead
 
-TEST "CHACHA20-POLY1305 - AEAD split boundaries", function
+test_chacha20poly1305_aead_boundaries = function
     lengths = [0, 1, 3, 4, 15, 16, 17]
     for aad_len in lengths
         for ciphertext_len in lengths
@@ -86,8 +88,9 @@ TEST "CHACHA20-POLY1305 - AEAD split boundaries", function
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0])), "error", "Reject unpadded AEAD")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0, 0])), "error", "Reject inconsistent AEAD lengths")
 end function
+TEST "CHACHA20-POLY1305 - AEAD split boundaries", @test_chacha20poly1305_aead_boundaries
 
-TEST "CHACHA20-POLY1305 - High-level encodings and authentication", function
+test_chacha20poly1305_high_level_auth = function
     key = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
     nonce = [1, 2, 3]
     aad = "A" + char(0) + char(233)
@@ -129,8 +132,9 @@ TEST "CHACHA20-POLY1305 - High-level encodings and authentication", function
     expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit"), ["", ""], "Empty AAD and plaintext round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext), "Empty message authenticates")
 end function
+TEST "CHACHA20-POLY1305 - High-level encodings and authentication", @test_chacha20poly1305_high_level_auth
 
-TEST "CHACHA20-POLY1305 - Poly1305.mac encodings", function
+test_chacha20poly1305_poly1305_encodings = function
     key = "85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b"
     message = "MAC wrapper input"
     raw_key = minicrypt.Encode.hexToB32(key)
@@ -152,8 +156,9 @@ TEST "CHACHA20-POLY1305 - Poly1305.mac encodings", function
     expectEqual(typeof(minicrypt.Poly1305.mac(key, message, "8bit", "unknown")), "error", "Reject unknown output encoding")
     expectEqual(minicrypt.Poly1305.mac(key, "!", "base64"), false, "Reject malformed Base64 input")
 end function
+TEST "CHACHA20-POLY1305 - Poly1305.mac encodings", @test_chacha20poly1305_poly1305_encodings
 
-TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
+test_chacha20poly1305_nonce_custom_encoding = function
     key = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
     nonce_hex = "010000000200000003000000"
     nonce = minicrypt.Encode.hexToB32(nonce_hex)
@@ -185,8 +190,9 @@ TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", function
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "unknown")), "error", "Reject unknown verification encoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "unknown")), "error", "Reject unknown AAD decoding")
 end function
+TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", @test_chacha20poly1305_nonce_custom_encoding
 
-TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", function
+test_chacha20poly1305_nonce_split_errors = function
     key = minicrypt.Encode.hexToB32("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
     plaintext = minicrypt.Encode.encodeText8("nonce source")[0]
     nonce = minicrypt.ChaCha.getHedgedNonce(plaintext)
@@ -205,8 +211,9 @@ TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", function
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitMessage([0] * 12)), "error", "Reject misaligned message")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decryptRaw(key, [1, 2, 3], [])), "error", "Propagate malformed AEAD from raw decrypt")
 end function
+TEST "CHACHA20-POLY1305 - Synthetic nonce and split errors", @test_chacha20poly1305_nonce_split_errors
 
-TEST "CHACHA20-POLY1305 - Malformed AEAD", function
+test_chacha20poly1305_malformed_aead = function
     key = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
     aad = "Visible text"
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
@@ -271,6 +278,7 @@ TEST "CHACHA20-POLY1305 - Malformed AEAD", function
     expectFalse(minicrypt.ChaCha20Poly1305.verify(key, msg11))
     expectFalse(minicrypt.ChaCha20Poly1305.verify(key, msg12))
 end function
+TEST "CHACHA20-POLY1305 - Malformed AEAD", @test_chacha20poly1305_malformed_aead
 
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS

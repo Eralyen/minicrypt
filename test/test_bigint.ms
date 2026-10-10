@@ -5,7 +5,7 @@ import_code("../src/bigint.ms")
 BigInt = minicrypt.BigInt
 BigInt.init
 
-TEST "BIGINT - BigInt.init", function
+test_bigint_init = function
     expectEqual(BigInt.BITS, BigInt.W * BigInt.N, 
         "BigInt.BITS = BigInt.W * BigInt.N")
 
@@ -15,13 +15,15 @@ TEST "BIGINT - BigInt.init", function
     expectEqual(BigInt.MAXVAL1, BigInt.MAXVAL+1, 
         "BigInt.MAXVAL1 = BigInt.MAXVAL + 1")
 end function
+TEST "BIGINT - BigInt.init", @test_bigint_init
 
-TEST "BIGINT - BigInt.Utils.random", function
+test_bigint_random = function
     expectNotEq(BigInt.Utils.random(0, BigInt.MAXVAL), BigInt.Utils.random(0, BigInt.MAXVAL), 
         "Two random numbers drawn at the same time should not be identical")
 end function
+TEST "BIGINT - BigInt.Utils.random", @test_bigint_random
 
-TEST "BIGINT - BigInt.times10", function
+test_bigint_times10 = function
     ten = BigInt.zero
     ten[0] = 10
 
@@ -37,8 +39,9 @@ TEST "BIGINT - BigInt.times10", function
 
     expectEqual(BigInt.times10(long1), long2, "Big integer times 10 with no carry")
 end function
+TEST "BIGINT - BigInt.times10", @test_bigint_times10
 
-TEST "BIGINT - BigInt.fromString", function
+test_bigint_from_string = function
     ten = BigInt.zero
     ten[0] = 10
     expectEqual(BigInt.fromString("10"), ten, """10"" -> 10")
@@ -50,15 +53,17 @@ TEST "BIGINT - BigInt.fromString", function
     expectEqual(BigInt.fromString(dec), int)
     BigInt.init
 end function
+TEST "BIGINT - BigInt.fromString", @test_bigint_from_string
 
-TEST "BIGINT - BigInt.toString", function
+test_bigint_to_string = function
     ten = BigInt.zero
     ten[0] = 10
     expectEqual(BigInt.toString(ten), "10", "10 -> ""10""")
     expectEqual(BigInt.toString(BigInt.zero), "0", "0 -> ""0""")
 end function
+TEST "BIGINT - BigInt.toString", @test_bigint_to_string
 
-TEST "BIGINT - BigInt.cmp", function
+test_bigint_cmp = function
     n1 = BigInt.one
     n0 = BigInt.zero
     nn1 = BigInt.negOne
@@ -69,8 +74,9 @@ TEST "BIGINT - BigInt.cmp", function
     expectEqual(BigInt.cmp(nn1, n1), -1, "cmp(-1,1) = -1")
     expectEqual(BigInt.cmp(n1, nn1), 1, "cmp(1,-1) = 1")
 end function
+TEST "BIGINT - BigInt.cmp", @test_bigint_cmp
 
-TEST "BIGINT - BigInt.invertP", function
+test_bigint_invert_p = function
     three = BigInt.fromSmall(3)
     four = BigInt.fromSmall(4)
     eleven = BigInt.fromSmall(11)
@@ -80,8 +86,9 @@ TEST "BIGINT - BigInt.invertP", function
     n106 = BigInt.fromSmall(106)
     expectEqual(BigInt.invertP(n271, n383), n106, "271^-1 = 106 mod 383")
 end function
+TEST "BIGINT - BigInt.invertP", @test_bigint_invert_p
 
-TEST "BIGINT - BigInt.mult", function
+test_bigint_mult = function
     BigInt.init(128, 26)
     a = [45781294, 66360979, 8747345, 63161984, 54681217]
     b = [3260956, 142, 8268, 508120, 568309]
@@ -98,8 +105,9 @@ TEST "BIGINT - BigInt.mult", function
     )
     BigInt.init
 end function
+TEST "BIGINT - BigInt.mult", @test_bigint_mult
 
-TEST "BIGINT - BigInt.specMod", function
+test_bigint_spec_mod = function
     BigInt.init(156, 26)
     x = [3849480, 43865974, 7289493, 6596178, 24153398, 17295018, 23827609, 6585633, 62592801, 463065, 0, 0]
     p = [67108859, 67108863, 67108863, 67108863, 67108863, 0]
@@ -107,6 +115,7 @@ TEST "BIGINT - BigInt.specMod", function
     expectEqual(BigInt.specMod(x, 5, 5, p), res)
     BigInt.init
 end function
+TEST "BIGINT - BigInt.specMod", @test_bigint_spec_mod
 
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS

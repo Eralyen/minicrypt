@@ -1,6 +1,7 @@
 // MiniTest by Olipro
 // https://github.com/Olipro/MiniTest
 // Released under the GNU LGPLv3 license, see LICENSE.md
+// Minor changes by Eralyen
 
 __scope = function()
 
@@ -16,12 +17,16 @@ __scope = function()
         return ""
     end function
     stacktrace = function(); return ""; end function
-    if globals.hasIndex("__Intrinsics") and globals.__Intrinsics.hasIndex("stackTrace") then stacktrace = function()
-        return "\n" + globals.__Intrinsics.stackTrace[3:].join("\n")
-    end function
-    if globals.hasIndex("IS_GREYBEL") then stacktrace = function()
-    return "\n" + include_lib("/lib/testlib.so").get_stack_trace[3:].join("\n")
-    end function
+    if globals.hasIndex("__Intrinsics") and globals.__Intrinsics.hasIndex("stackTrace") then
+        stacktrace = function()
+            return "\n" + globals.__Intrinsics.stackTrace[3:].join("\n")
+        end function
+    end if
+    if globals.hasIndex("IS_GREYBEL") then
+        stacktrace = function()
+            return "\n" + include_lib("/lib/testlib.so").get_stack_trace[3:].join("\n")
+        end function
+    end if
     OK     = ifGH("<color=#4fd2e0>")
     OK_E   = ifGH("</color>")
     ERR    = ifGH("<color=""red"">")

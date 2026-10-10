@@ -12,7 +12,8 @@ additional_authenticated_data = "Encryption date: " + current_date
 
 encrypted = c20p.encrypt(key, content, additional_authenticated_data)
 file.set_content(encrypted)
-
+print "my_file.txt was encrypted!"
+print
 user_input("If you like, open the file and mess with the encrypted text (optional), then press [Return] ")
 
 encrypted = file.get_content

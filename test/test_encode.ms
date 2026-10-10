@@ -2,7 +2,7 @@ globals.isGH = true
 import_code("./MiniTest/MiniTest.src")
 import_code("../src/encode.ms")
 
-TEST "ENCODE - Encode.B32toB26", function
+test_encode_b32to_b26 = function
     bi32 = [4078784323, 3787266857, 1866653276, 3980223449]
     bi26 = [52252483, 54971004, 31837723, 56999179, 15547747]
     res = minicrypt.Encode.B32toB26(bi32)
@@ -13,8 +13,9 @@ TEST "ENCODE - Encode.B32toB26", function
     res = minicrypt.Encode.B32toB26(bi32)
     expectEqual(res, bi26)
 end function
+TEST "ENCODE - Encode.B32toB26", @test_encode_b32to_b26
 
-TEST "ENCODE - Encode.B26toB32", function
+test_encode_b26to_b32 = function
     bi32 = [4294967295] // 2^32-1
     bi26 = [67108863, 63]
     res = minicrypt.Encode.B26toB32(bi26)
@@ -30,8 +31,9 @@ TEST "ENCODE - Encode.B26toB32", function
     res = minicrypt.Encode.B26toB32(bi26)
     expectEqual(res, bi32)
 end function
+TEST "ENCODE - Encode.B26toB32", @test_encode_b26to_b32
 
-TEST "ENCODE - Encode.toBase64", function
+test_encode_to_base64 = function
     toB64 = function(s)
         return minicrypt.Encode.toBase64(minicrypt.Encode.encodeText16(s)[0], s.len*2)
     end function
@@ -43,8 +45,9 @@ TEST "ENCODE - Encode.toBase64", function
     expectEqual(toB64("fooba"), "ZgBvAG8AYgBhAA==")
     expectEqual(toB64("foobar"), "ZgBvAG8AYgBhAHIA")
 end function
+TEST "ENCODE - Encode.toBase64", @test_encode_to_base64
 
-TEST "ENCODE - Encode.fromBase64", function
+test_encode_from_base64 = function
     fromB64 = function(s)
         decoded = minicrypt.Encode.fromBase64(s)
         return minicrypt.Encode.decodeText16(decoded[0], decoded[1])
@@ -59,8 +62,9 @@ TEST "ENCODE - Encode.fromBase64", function
     expectEqual(minicrypt.Encode.fromBase64(minicrypt.Encode.toBase64([4078784323, 3787266857, 1866653276, 3980223449, 2188448744, 3794152570, 3970912016, 2025583602, 2741976039, 2456772636, 3444865498, 888482765, 1087261713, 3444653798, 1280254342, 3072359811, 2668078665, 1096835929, 685689349, 2130529749, 1829688326, 1942337814, 988146106, 1165560999, 3657534284, 2302706558, 3452594094, 723000822, 51471233, 2704941066, 3906206717, 3991179606, 1281944996, 1088721742, 3783357791, 3851833447, 1191161536, 1256017377, 2947295481, 3495119398, 2905043554, 2968244184, 1750625517, 1705690631, 3406069800, 397451706, 3170188596, 319149437, 3885421532, 1550618015, 673801488, 2478531674, 1163329293, 1990375181, 2699523328, 22770060, 36327], 114*2))[0],
                                                   [4078784323, 3787266857, 1866653276, 3980223449, 2188448744, 3794152570, 3970912016, 2025583602, 2741976039, 2456772636, 3444865498, 888482765, 1087261713, 3444653798, 1280254342, 3072359811, 2668078665, 1096835929, 685689349, 2130529749, 1829688326, 1942337814, 988146106, 1165560999, 3657534284, 2302706558, 3452594094, 723000822, 51471233, 2704941066, 3906206717, 3991179606, 1281944996, 1088721742, 3783357791, 3851833447, 1191161536, 1256017377, 2947295481, 3495119398, 2905043554, 2968244184, 1750625517, 1705690631, 3406069800, 397451706, 3170188596, 319149437, 3885421532, 1550618015, 673801488, 2478531674, 1163329293, 1990375181, 2699523328, 22770060, 36327])
 end function
+TEST "ENCODE - Encode.fromBase64", @test_encode_from_base64
 
-TEST "ENCODE - Text encoding boundaries", function
+test_encode_text_boundaries = function
     expectEqual(minicrypt.Encode.encodeText8(""), [[], 0])
     expectEqual(minicrypt.Encode.encodeText8("abcde"), [[1684234849, 101], 5])
     expectEqual(minicrypt.Encode.decodeText8([1684234849, 101], 5), "abcde")
@@ -71,8 +75,9 @@ TEST "ENCODE - Text encoding boundaries", function
     expectEqual(typeof(minicrypt.Encode.decodeText16([], 1)), "error")
     expectEqual(typeof(minicrypt.Encode.decodeText16([55296], 2)), "error")
 end function
+TEST "ENCODE - Text encoding boundaries", @test_encode_text_boundaries
 
-TEST "ENCODE - Base64 padding and explicit lengths", function
+test_encode_base64_boundaries = function
     expectEqual(minicrypt.Encode.toBase64([67305985], 0), "")
     expectEqual(minicrypt.Encode.toBase64([67305985]), "AQIDBA==")
     expectEqual(minicrypt.Encode.fromBase64("AQ=="), [[1], 1])
@@ -89,8 +94,9 @@ TEST "ENCODE - Base64 padding and explicit lengths", function
     expectEqual(typeof(minicrypt.Encode.fromBase64("!!!!")), "error")
     expectEqual(minicrypt.Encode.fromBase64(123), null)
 end function
+TEST "ENCODE - Base64 padding and explicit lengths", @test_encode_base64_boundaries
 
-TEST "ENCODE - Hex conversion boundaries", function
+test_encode_hex_boundaries = function
     expectEqual(minicrypt.Encode.hexToB32("0x0123456789abcdef"), [1732584193, 4023233417])
     expectEqual(minicrypt.Encode.hexToB32("a"), [160])
     expectEqual(minicrypt.Encode.hexToB32(""), [0])
@@ -99,6 +105,7 @@ TEST "ENCODE - Hex conversion boundaries", function
     expectEqual(minicrypt.Encode.B32ToHex([0, 1, 4294967295]), ["00000000", "00000001", "ffffffff"])
     expectEqual(minicrypt.Encode.hexBytesToB32("00:01:02:03:04"), [50462976, 4])
 end function
+TEST "ENCODE - Hex conversion boundaries", @test_encode_hex_boundaries
 
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS

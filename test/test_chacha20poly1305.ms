@@ -54,6 +54,10 @@ TEST "CHACHA20-POLY1305 - ChaCha20Poly1305.*Raw", function
     expectTrue(minicrypt.ChaCha20Poly1305.verifyRaw(key, mac, nonce, aead), "Verification of authentic AEAD")
 
     aead_tampered = aead[:]
+    aead_tampered[0] = aead_tampered[0] + 1
+    expectFalse(minicrypt.ChaCha20Poly1305.verifyRaw(key, mac, nonce, aead_tampered), "Rejection of tampered AAD")
+
+    aead_tampered = aead[:]
     aead_tampered[2] = aead_tampered[2] + 1
     expectFalse(minicrypt.ChaCha20Poly1305.verifyRaw(key, mac, nonce, aead_tampered), "Rejection of tampered AEAD")
 
@@ -95,6 +99,11 @@ TEST "CHACHA20-POLY1305 - High-level encodings and authentication", function
     expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext), aad, "Default encoding retrieves AAD")
 
     encoded = minicrypt.Encode.fromBase64(ciphertext)
+    tampered_aad = encoded[0][:]
+    tampered_aad[7] = tampered_aad[7] + 1
+    tampered_aad_ciphertext = minicrypt.Encode.toBase64(tampered_aad, encoded[1])
+    expectFalse(minicrypt.ChaCha20Poly1305.verify(key, tampered_aad_ciphertext), "Reject changed AAD")
+
     tampered = encoded[0][:]
     tampered[0] = (tampered[0] + 1) % 4294967296
     tampered_ciphertext = minicrypt.Encode.toBase64(tampered, encoded[1])

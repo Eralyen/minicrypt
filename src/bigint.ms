@@ -324,8 +324,8 @@ BigInt.mult = function(a, b, trim = true)
         carry = 0
         for j in range(0, self.N-1)
             x = s[i+j] + a[j] * b[i] + carry
-            carry = bitwise(">>", x, self.W)
-            s[i+j] = bitAnd(x, self.MAXVAL)
+            carry = floor(x / self.MAXVAL1)
+            s[i+j] = x % self.MAXVAL1
         end for
         s[i + self.N] = carry
     end for

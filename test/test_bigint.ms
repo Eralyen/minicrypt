@@ -88,6 +88,14 @@ TEST "BIGINT - BigInt.mult", function
     c = [3849480, 43865974, 7289493, 6596178, 24153398, 17295018, 23827609, 6585633, 62592801, 463065]
     expectEqual(BigInt.mult(a, b, false), c, "No trim")
     expectEqual(BigInt.mult(a, b, true), c[:5], "Trim")
+
+    max_limb = BigInt.zero
+    max_limb[0] = BigInt.MAXVAL
+    expectEqual(
+        BigInt.mult(max_limb, max_limb, false),
+        [1, BigInt.MAXVAL-1] + [0] * 8,
+        "Carry from a product larger than 32 bits"
+    )
     BigInt.init
 end function
 

@@ -2,7 +2,7 @@
 minicrypt is a cryptography library written in [MiniScript](https://miniscript.org/) 1.5.1 that aims to deliver secure, fast, and user-friendly algorithms to Grey Hack players, and hopefully the MiniScript community at large.
 
 ## Getting Started
-Visit the Wiki, or browse the examples.
+Visit the [Wiki](https://github.com/Eralyen/minicrypt/wiki), or browse the [examples](https://github.com/Eralyen/minicrypt/tree/main/examples).
 
 To start writing an application, import minicrypt.ms or just the modules you need. The imported modules are contained in `globals.minicrypt`.
 

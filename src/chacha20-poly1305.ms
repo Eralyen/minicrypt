@@ -394,8 +394,8 @@ end function
 minicrypt.ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
     aad_len32 = aad_len % 4294967296
     ciphertext_len32 = ciphertext_len % 4294967296
-    return  aad        + [0] * (4 - ceil(aad_len / 4) % 4) +
-            ciphertext + [0] * (4 - ceil(ciphertext_len / 4) % 4) + 
+    return  aad        + [0] * (ceil(aad_len / 16) * 4 - ceil(aad_len / 4)) +
+            ciphertext + [0] * (ceil(ciphertext_len / 16) * 4 - ceil(ciphertext_len / 4)) +
             [aad_len32]        + [(aad_len - aad_len32) / 4294967296] +
             [ciphertext_len32] + [(ciphertext_len - ciphertext_len32) / 4294967296]
 end function
@@ -409,8 +409,8 @@ minicrypt.ChaCha20Poly1305.splitAEAD = function(aead)
     if aead.len % 4 != 0 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "unpadded_aead")
     aad_len = aead[-4] + aead[-3] * 4294967296
     ciphertext_len = aead[-2] + aead[-1] * 4294967296
-    aad_padded_len = ceil(aad_len/4) + (4 - ceil(aad_len / 4) % 4)
-    ciphertext_padded_len = ceil(ciphertext_len/4) + (4 - ceil(ciphertext_len / 4) % 4)
+    aad_padded_len = ceil(aad_len / 16) * 4
+    ciphertext_padded_len = ceil(ciphertext_len / 16) * 4
     if aead.len != aad_padded_len + ciphertext_padded_len + 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "length_mismatch")
     aad = aead[:ceil(aad_len/4)]
     ciphertext = aead[aad_padded_len : aad_padded_len + ceil(ciphertext_len/4)]

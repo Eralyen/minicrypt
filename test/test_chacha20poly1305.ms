@@ -75,6 +75,8 @@ test_chacha20poly1305_aead_boundaries = function
             aad = minicrypt.Encode.encodeText8("a" * aad_len)[0]
             ciphertext = minicrypt.Encode.encodeText8("c" * ciphertext_len)[0]
             aead = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, ciphertext_len)
+            expected_aead_len = ceil(aad_len / 16) * 4 + ceil(ciphertext_len / 16) * 4 + 4
+            expectEqual(aead.len, expected_aead_len, "Padded AEAD length")
 
             res = minicrypt.ChaCha20Poly1305.splitAEAD(aead)
             expectEqual(res[0], aad, "AAD length " + str(aad_len))
@@ -84,9 +86,10 @@ test_chacha20poly1305_aead_boundaries = function
         end for
     end for
 
+    expectEqual(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0, 0]), [[], 0, [], 0], "Zero length AEAD")
+    
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([])), "error", "Reject short AEAD")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0])), "error", "Reject unpadded AEAD")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0, 0])), "error", "Reject inconsistent AEAD lengths")
 end function
 TEST "CHACHA20-POLY1305 - AEAD split boundaries", @test_chacha20poly1305_aead_boundaries
 

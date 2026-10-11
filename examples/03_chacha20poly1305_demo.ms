@@ -199,7 +199,7 @@ while true
         u = u.to_int
         if u == 1 then verification = c20p.verify(key, msg)
         if u == 2 then
-            extracted_aad = c20p.getAad(msg, "8bit") 
+            extracted_aad = c20p.getAAD(msg, "8bit") 
             if typeof(extracted_aad) == "error" then
                 print "<color=red>" + extracted_aad.code
                 extracted_aad = null

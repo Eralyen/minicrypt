@@ -99,7 +99,7 @@ test_chacha20poly1305_high_level_auth = function
     ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "16bit", "base64", nonce)
     expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext), [plaintext, aad], "Default encoding round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext), "Default encoding authenticates")
-    expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext), aad, "Default encoding retrieves AAD")
+    expectEqual(minicrypt.ChaCha20Poly1305.getAAD(ciphertext), aad, "Default encoding retrieves AAD")
 
     encoded = minicrypt.Encode.fromBase64(ciphertext)
     tampered_aad = encoded[0][:]
@@ -119,7 +119,7 @@ test_chacha20poly1305_high_level_auth = function
     ciphertext = minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, "", "8bit", "8bit", [4, 5, 6])
     expectEqual(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "8bit"), [plaintext, ""], "8-bit transport round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "8bit"), "8-bit transport authenticates")
-    expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "8bit", "8bit"), "", "8-bit transport retrieves empty AAD")
+    expectEqual(minicrypt.ChaCha20Poly1305.getAAD(ciphertext, "8bit", "8bit"), "", "8-bit transport retrieves empty AAD")
 
     for plaintext_len in [1, 15, 16, 17, 63, 64, 65]
         plaintext = "x" * plaintext_len
@@ -181,14 +181,14 @@ test_chacha20poly1305_nonce_custom_encoding = function
         "Custom encoder and decoder references"
     )
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, custom_ciphertext_encoding), "Custom ciphertext encoding verifies")
-    expectEqual(minicrypt.ChaCha20Poly1305.getAad(ciphertext, custom_text_encoding, custom_ciphertext_encoding), aad, "Custom encoding retrieves AAD")
+    expectEqual(minicrypt.ChaCha20Poly1305.getAAD(ciphertext, custom_text_encoding, custom_ciphertext_encoding), aad, "Custom encoding retrieves AAD")
 
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "unknown")), "error", "Reject unknown plaintext encoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.encrypt(key, plaintext, aad, "8bit", "unknown")), "error", "Reject unknown ciphertext encoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "unknown")), "error", "Reject unknown plaintext decoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, ciphertext, true, "8bit", "unknown")), "error", "Reject unknown ciphertext decoding")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.verify(key, ciphertext, "unknown")), "error", "Reject unknown verification encoding")
-    expectEqual(typeof(minicrypt.ChaCha20Poly1305.getAad(ciphertext, "unknown")), "error", "Reject unknown AAD decoding")
+    expectEqual(typeof(minicrypt.ChaCha20Poly1305.getAAD(ciphertext, "unknown")), "error", "Reject unknown AAD decoding")
 end function
 TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", @test_chacha20poly1305_nonce_custom_encoding
 

@@ -333,7 +333,7 @@ end function
 // @param {string} ciphertext            - Text to authenticate. The default format is base64
 // @param {string} [ciphertext_encoding] - (optional) Format to encode the ciphertext with. Make sure it matches the ciphertext
 // @param {string} [mac_encoding]        - (optional) Format to encode the ciphertext with. Make sure it matches the ciphertext
-// @returns {string}                     - The message authentication code, encoded with 'mac_encoding' (default = base64)
+// @returns {string | error}             - The message authentication code, encoded with 'mac_encoding' (default = base64)
 minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64", mac_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
@@ -643,9 +643,9 @@ end function
 // @param {string}           [plaintext_encoding]   - (optional) Format to encode the plaintext with. Supported values are "16bit" (default) and "8bit"
 // @param {string}           [ciphertext_encoding]  - (optional) Format to encode the ciphertext with. Supported values are "base64" (default) and "8bit"
 // @returns {string | error}                        - The AAD in plaintext, or an error if the ciphertext is not well-formed
-// @example ChaCha20Poly1305.getAad("CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
+// @example ChaCha20Poly1305.getAAD("CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
 // @example > "You can look but ya can't touch"
-minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
+minicrypt.ChaCha20Poly1305.getAAD = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     if typeof(@ciphertext_encoding) == "list" then
         encoder = @ciphertext_encoding[0]
     else if ciphertext_encoding == "base64" then
@@ -653,7 +653,7 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     else if ciphertext_encoding == "8bit" then
         encoder = @minicrypt.Encode.encodeText8
     else
-        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAad", "unsupported_encoding")
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
     end if
 
     if typeof(@plaintext_encoding) == "list" then
@@ -663,7 +663,7 @@ minicrypt.ChaCha20Poly1305.getAad = function(ciphertext, plaintext_encoding = "1
     else if plaintext_encoding == "8bit" then
         decoder = @minicrypt.Encode.decodeText8
     else
-        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAad", "unsupported_encoding")
+        return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
     end if
 
     res = encoder(ciphertext)

@@ -309,15 +309,15 @@ end function
 
 // Deserialization from test vector format to lists of 32-bit numbers
 // Input format: 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
-// @param {string} txt     - the hex bytes
+// @param {string} text     - the hex bytes
 // @returns {list<number>} - a list of 32-bit integers
-minicrypt.Encode.hexBytesToB32 = function(txt)
+minicrypt.Encode.hexBytesToB32 = function(text)
     min = function(a, b)
         if a <= b then return a
         return b
     end function
     output = []
-    T = txt.split(":")
+    T = text.split(":")
     for i in range(0, T.len-1, 4)
         output.push(0)
         for j in range(min(i+3, T.len-1), i)

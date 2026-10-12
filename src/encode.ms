@@ -23,7 +23,7 @@ minicrypt.Encode.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096
 
 // Takes a string and returns a list of 32-bit numbers. 16 bits per character, the default Grey Hack string encoding. Returns [output, byte_len]
 // @param {string} text - any string
-// @returns {list}      - [output, byte_len] -> [list<number>, number]
+// @returns {list | error}      - [output, byte_len] -> [list<number>, number]
 minicrypt.Encode.encodeText16 = function(text)
     output = []
     if text.len == 0 then return [output, 0]
@@ -37,9 +37,42 @@ minicrypt.Encode.encodeText16 = function(text)
     return [output, text.len*2]
 end function
 
+// Takes a string and returns a list of 32-bit numbers. 15 bits per character, which is good if you need to encode arbitrary values in a very compact string. Returns [output, byte_len]. Note that this takes a string that is typically used as a ciphertext, so it expects a string in the range [1, 32768] inclusive
+// @param {string} text    - any string
+// @returns {list | error} - [output, byte_len] -> [list<number>, number] or error if the provided string is not .
+minicrypt.Encode.encodeText15 = function(text)
+    output = []
+    if text.len == 0 then return [output, 0]
+    POW2 = minicrypt.Encode.POW2
+
+    pad = 0
+    while pad < text.len and code(text[text.len-1-pad]) == 32769
+        pad = pad + 1
+    end while
+    if pad > 3 then return minicrypt.Error("minicrypt.Encode.encodeText15", "invalid_padding")
+    body = text[:text.len-pad]
+    if body.len == 0 then return minicrypt.Error("minicrypt.Encode.encodeText15", "invalid_padding")
+    
+    acc = 0
+    bits = 0
+    for c in body
+        n_code = code(c)
+        if n_code < 1 or n_code > 32768 then return minicrypt.Error("minicrypt.Encode.encodeText15", "invalid_char")
+        acc = acc + (n_code-1) * POW2[bits]
+        bits = bits + 15
+        if bits >= 32 then
+            n = acc % 4294967296
+            acc = (acc - n) / 4294967296
+            bits = bits - 32
+            output.push(n)
+        end if
+    end for
+    return [output, output.len * 4 - pad]
+end function
+
 // Takes a string and returns a list of 32-bit numbers. 8 bits per character. Returns [output, byte_len]
-// @param {string} text - any string
-// @returns {list}      - [output, byte_len] -> [list<number>, number]
+// @param {string} text    - any string
+// @returns {list | error} - [output, byte_len] -> [list<number>, number]
 minicrypt.Encode.encodeText8 = function(text)
     output = []
     if text.len == 0 then return [output, 0]
@@ -60,7 +93,7 @@ end function
 // Takes a list of 32-bit numbers and returns a string. 16 bits per character, the default Grey Hack string encoding. If any one character would throw a runtime error (char codes between 55296 and 57343) it returns an error.
 // @param {list<number>} input - a list of 32-bit integers
 // @param {number}       len   - the length of the input in bytes. Max 2^24
-// @returns {string}           - the decoded string
+// @returns {string | error}   - the decoded string
 minicrypt.Encode.decodeText16 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText16", "length_mismatch")
@@ -77,10 +110,38 @@ minicrypt.Encode.decodeText16 = function(input, len)
     return text
 end function
 
+// Takes a list of 32-bit numbers and returns a string. 15 bits per character, which is good if you need to decode arbitrary numbers into a string that is safe to store in Grey Hack. That is, avoiding char(0) and the char(55296)-char(57343) range.
+// @param {list<number>} input - a list of 32-bit integers
+// @param {number}       len   - the length of the input in bytes. Max 2^24
+// @returns {string | error}   - the decoded string
+minicrypt.Encode.decodeText15 = function(input, len)
+    text = ""
+        if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText15", "length_mismatch")
+    if len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeText15", "max_len_exceeded") // 16777216 = 2^24
+    if input.len == 0 then return ""
+    POW2 = minicrypt.Encode.POW2
+    acc = 0
+    bits = 0
+    for n in input
+        acc = acc + n * POW2[bits]
+        bits = bits + 32
+        while bits >= 15
+            n_code = acc % 32768
+            acc = (acc - n_code) / 32768
+            bits = bits - 15
+            text = text + char(n_code + 1)
+        end while
+    end for
+    if bits > 0 then text = text + char(acc + 1)
+    pad = ceil(len/4) * 4 - len   // 0 to 3
+    text = text + char(32769) * pad
+    return text
+end function
+
 // Takes a list of 32-bit numbers and returns a string. 8 bits per character.
 // @param {list<number>} input - a list of 32-bit integers
 // @param {number}       len   - the length of the input in bytes. Max 2^24
-// @returns {string}           - the decoded string
+// @returns {string | error}   - the decoded string
 minicrypt.Encode.decodeText8 = function(input, len)
     text = ""
     if input.len != ceil(len/4) then return minicrypt.Error("minicrypt.Encode.decodeText8", "length_mismatch")
@@ -155,7 +216,7 @@ end function
 // Takes a list of 32-bit numbers and returns a base64 string
 // @param {list<number>} input - a list of 32-bit integers
 // @param {number}       len   - the length of 'input' in bytes. Max 2^24
-// @returns {string}           - the base64 representation of the input 
+// @returns {string | error}   - the base64 representation of the input 
 minicrypt.Encode.toBase64 = function(input, len)
     if input.len == 0 then return ""
     if len > 16777216 then return minicrypt.Error("minicrypt.Encode.toBase64", "max_len_exceeded") // 16777216 = 2^24
@@ -200,9 +261,9 @@ end function
 
 // Decodes base64 into a list of 32-bit numbers and its length in bytes. Returns [output, byte_len] if the string is valid.
 // @param {string} b64 - the base64 string
-// @returns {list | error | null}     - Returns [output, byte_len] -> [list<number>, number] if 'b64' is valid. Returns null if 'b64' is not a string, or an error object if it's not a valid base64 string (invalid character or invalid padding)
+// @returns {list | error}     - Returns [output, byte_len] -> [list<number>, number] if 'b64' is valid. Returns an error object if it's not a valid base64 string (not a string, invalid character or invalid padding)
 minicrypt.Encode.fromBase64 = function(b64)
-    if typeof(b64) != "string" then return null
+    if typeof(b64) != "string" then return minicrypt.Error("minicrypt.Encode.fromBase64", "not_a_string")
     if b64.len % 4 != 0 then return minicrypt.Error("minicrypt.Encode.fromBase64", "invalid_length")
     if b64.len == 0 then return [[], 0]
     if ceil((b64.len / 8) * 6) > 16777216 then return minicrypt.Error("minicrypt.Encode.fromBase64", "max_len_exceeded")
@@ -260,9 +321,9 @@ end function
 
 // Turns a hex string into a list of 32-bit integers.
 // @param {string}                        h - the hex string
-// @returns {list<number> | null | error}   - returns null if h is not a string, error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
+// @returns {list<number> | error}   - returns error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
 minicrypt.Encode.hexToB32 = function(h)
-    if typeof(h) != "string" then return null
+    if typeof(h) != "string" then return minicrypt.Error("minicrypt.Encode.hexToB32", "not_a_string")
     if h.len >= 2 and h[:2] == "0x" then h = h[2:]
     if h == "" then return [0]
     output = []

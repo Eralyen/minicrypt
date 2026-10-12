@@ -79,69 +79,52 @@ TEST "ENCODE - Text encoding boundaries", @test_encode_text_boundaries
 
 test_encode_text15_boundaries = function
     E = minicrypt.Encode
-    PAD = char(32769)
 
-    // --- empty ---
     expectEqual(E.encodeText15(""), [[], 0])
     expectEqual(E.decodeText15([], 0), "")
 
-    // --- single limb, no padding ---
-    // 32 bits -> 3 chars (15 + 15 + 2 bits), each stored as value+1
-    expectEqual(E.decodeText15([0], 4), char(1) + char(1) + char(1))
-    expectEqual(E.encodeText15(char(1) + char(1) + char(1)), [[0], 4])
-    expectEqual(E.decodeText15([1], 4), char(2) + char(1) + char(1))
-    expectEqual(E.encodeText15(char(2) + char(1) + char(1)), [[1], 4])
-
-    // all 32 bits set: 32767, 32767, 3 -> char(32768), char(32768), char(4)
+    expectEqual(E.decodeText15([0], 4), char(1) * 3)
+    expectEqual(E.encodeText15(char(1) * 3), [[0], 4])
     expectEqual(E.decodeText15([4294967295], 4), char(32768) + char(32768) + char(4))
     expectEqual(E.encodeText15(char(32768) + char(32768) + char(4)), [[4294967295], 4])
 
-    // --- padding: 1 to 3 pad chars when len is not a multiple of 4 ---
-    // 1 byte -> 3 chars + 3 pad
-    expectEqual(E.decodeText15([0], 1), char(1) * 3 + PAD * 3)
-    expectEqual(E.encodeText15(char(1) * 3 + PAD * 3), [[0], 1])
-    // 2 bytes -> 2 pad
-    expectEqual(E.decodeText15([0], 2), char(1) * 3 + PAD * 2)
-    expectEqual(E.encodeText15(char(1) * 3 + PAD * 2), [[0], 2])
-    // 3 bytes -> 1 pad
-    expectEqual(E.decodeText15([0], 3), char(1) * 3 + PAD)
-    expectEqual(E.encodeText15(char(1) * 3 + PAD), [[0], 3])
+    expectEqual(E.decodeText15([0], 2), char(1) * 2)
+    expectEqual(E.encodeText15(char(1) * 2), [[0], 2])
+    expectEqual(E.decodeText15([65535], 2), char(32768) + char(2))
+    expectEqual(E.encodeText15(char(32768) + char(2)), [[65535], 2])
 
-    // 5 bytes vs 8 bytes: same limb count, must be distinguishable
-    expectEqual(E.encodeText15(char(1) * 5 + PAD * 3), [[0, 0], 5])
-    expectEqual(E.encodeText15(char(1) * 5), [[0, 0], 8])
+    expected = char(25186) + char(18631) + char(406) + char(1)
+    expectEqual(E.decodeText15([1684234849, 101], 6), expected)
+    expectEqual(E.encodeText15(expected), [[1684234849, 101], 6])
 
-    // --- value spanning two limbs ("abcde" as in the text8 test) ---
-    // limb 1 = 25185 + 18630*2^15 + 1*2^30, limb 2 contributes 101 << 2 to the third char
-    expected = char(25186) + char(18631) + char(406) + char(1) + char(1) + PAD * 3
-    expectEqual(E.decodeText15([1684234849, 101], 5), expected)
-    expectEqual(E.encodeText15(expected), [[1684234849, 101], 5])
-
-    // --- round trips for every pad amount ---
-    limbs = [4294967295, 0, 123456789, 1]
-    for len in range(13, 16)
+    limbs = [4294967295, 0, 123456789, 1, 4294967295, 7, 305419896, 4294967295]
+    for len in range(2, 32, 2)
         input = limbs[:ceil(len / 4)]
-        expectEqual(E.encodeText15(E.decodeText15(input, len)), [input, len])
+        if len % 4 == 2 then input[-1] = input[-1] % 65536
+        s = E.decodeText15(input, len)
+        expectEqual(s.len, ceil(len * 8 / 15))
+        expectEqual(E.encodeText15(s), [input, len])
     end for
 
-    // --- every produced character is in the safe range ---
-    s = E.decodeText15([4294967295, 4294967295, 0, 305419896], 16)
-    for c in s
-        expectEqual(code(c) >= 1 and code(c) <= 32769, 1)
+    for len in range(2, 32, 2)
+        s = E.decodeText15(limbs[:ceil(len / 4)], len)
+        for c in s
+            expectEqual(code(c) >= 1 and code(c) <= 32768, 1)
+        end for
     end for
 
-    // --- decode errors ---
-    expectEqual(typeof(E.decodeText15([], 1)), "error")           // length mismatch
-    expectEqual(typeof(E.decodeText15([0], 8)), "error")          // length mismatch
-    expectEqual(typeof(E.decodeText15([0, 0], 4)), "error")       // length mismatch
-    expectEqual(typeof(E.decodeText15([0], 16777217)), "error")   // > 2^24
+    expectEqual(typeof(E.decodeText15([0], 1)), "error")
+    expectEqual(typeof(E.decodeText15([0], 3)), "error")
+    expectEqual(typeof(E.decodeText15([], 2)), "error")
+    expectEqual(typeof(E.decodeText15([0], 8)), "error")
+    expectEqual(typeof(E.decodeText15([0, 0], 4)), "error")
 
-    // --- encode errors ---
-    expectEqual(typeof(E.encodeText15(char(0))), "error")                       // below range
-    expectEqual(typeof(E.encodeText15(char(50000))), "error")                   // above range
-    expectEqual(typeof(E.encodeText15(char(1) + PAD + char(1))), "error")       // pad char mid-string
-    expectEqual(typeof(E.encodeText15(char(1) * 3 + PAD * 4)), "error")         // more than 3 pad chars
-    expectEqual(typeof(E.encodeText15(PAD)), "error")
+    expectEqual(typeof(E.encodeText15(char(1))), "error")
+    expectEqual(typeof(E.encodeText15(char(1) * 17)), "error")
+    expectEqual(typeof(E.encodeText15(char(0) + char(1))), "error")
+    expectEqual(typeof(E.encodeText15(char(50000) + char(1))), "error")
+    expectEqual(typeof(E.encodeText15(char(32769) + char(1))), "error")
+    expectEqual(typeof(E.encodeText15(char(1) + char(3))), "error")
 end function
 TEST "ENCODE - Text15 encoding boundaries", @test_encode_text15_boundaries
 

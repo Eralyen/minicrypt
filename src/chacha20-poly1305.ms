@@ -285,6 +285,12 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
 end function
 
 //------------------------------
+// Specific variants
+minicrypt.ChaCha20 = new minicrypt.ChaCha
+minicrypt.ChaCha20.ROUNDS = 20
+
+minicrypt.ChaCha8 = new minicrypt.ChaCha
+minicrypt.ChaCha8.ROUNDS = 8
 
 // Clamps the "r" value in Poly1305.macRaw by editing it in place. Also returns the clamped value.
 // @param {list<number>}   r - a list of 4 32-bit integers
@@ -379,9 +385,9 @@ minicrypt.ChaCha20Poly1305 = {}
 // @param {list<number>}   nonce - a list of 3 32-bit integers
 // @returns {list<number>}       - a list of 8 32-bit integers
 minicrypt.ChaCha20Poly1305.keygen = function(key, nonce)
-    state = minicrypt.ChaCha.assembleState(key, nonce, 0)
+    state = minicrypt.ChaCha20.assembleState(key, nonce, 0)
     block = [0] * 16
-    minicrypt.ChaCha.chachaBlock(block, state)
+    minicrypt.ChaCha20.chachaBlock(block, state)
     return block[:8]
 end function
 
@@ -438,7 +444,7 @@ end function
 // @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
 minicrypt.ChaCha20Poly1305.encryptRaw = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
     otk = minicrypt.ChaCha20Poly1305.keygen(key, nonce)
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext, plaintext_len, 1)
+    ciphertext = minicrypt.ChaCha20.chacha(key, nonce, plaintext, plaintext_len, 1)
     aead = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
     tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
     return [aead, tag]
@@ -458,7 +464,7 @@ minicrypt.ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
     aad_len = res[1]
     ciphertext = res[2]
     ciphertext_len = res[3]
-    plaintext = minicrypt.ChaCha.chacha(key, nonce, ciphertext, ciphertext_len, 1)
+    plaintext = minicrypt.ChaCha20.chacha(key, nonce, ciphertext, ciphertext_len, 1)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
@@ -522,7 +528,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     plaintext_len_bytes = enc[1]
 
     if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
-    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(aad_enc + plaintext_enc)
+    if nonce == null then nonce = minicrypt.ChaCha20.getHedgedNonce(aad_enc + plaintext_enc)
     
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
                                       aad_enc, aad_len_bytes, 

@@ -20,14 +20,18 @@ minicrypt.Utils = {}
 // @example 00000080  a7 cc cb b5 36 81 d9 66  db f9 29 85 34 42 b5 1d  |§ÌËµ6.ÙfÛù).4Bµ.|
 // @example 00000090  00 00 00 00 00 00 00 00  00 00 00 00 3e 00 00 00  |............>...|
 // @example 000000a0  00 00 00 00 24 00 00 00  00 00 00 00              |....$.......|
-minicrypt.Utils.hexdump = function(b64)
+minicrypt.Utils.hexdump = function(b64, encoding="base64")
     byteToChar = function(b)
         blacklist = range(0,31) + range(127, 159) + [173]
         if blacklist.indexOf(b) != null then return "."
         return char(b)
     end function
 
-    val = minicrypt.Encode.fromBase64(b64)
+    res = minicrypt.Encode.getEncoding(encoding)
+    if typeof(res) == "error" then return res
+    encode = res[0]
+
+    val = encode(b64)
     if val == null then return null
     if typeof(val) == "error" then return val
     num = val[0]

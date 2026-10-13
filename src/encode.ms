@@ -411,6 +411,14 @@ minicrypt.Encode.getEncoding = function(type)
         return [@minicrypt.Encode.fromBase64, @minicrypt.Encode.toBase64]
     else if typeof(type) == "list" then
         return type
+    else if type == "bi32" then
+        e = function(x)
+            return [x, x.len * 4]
+        end function
+        d = function(x, l)
+            return x
+        end function
+        return [@e, @d]
     else
         return null
     end if

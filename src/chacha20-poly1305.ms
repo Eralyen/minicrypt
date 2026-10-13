@@ -190,11 +190,11 @@ end function
 // @example minicrypt.ChaCha.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "Cha Cha Real Smooth")
 minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null, counter = 1)
     pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if pe == null then return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
     encoder = pe[0]
 
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
     decoder = ce[1]
     
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.encrypt", "incorrect_key_length")
@@ -230,11 +230,11 @@ end function
 // @example minicrypt.ChaCha.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "hxnPfNewn9b3lLo+LAAAAAAAAADK/ZbTfhBgbK4Aftz2V05UF02xIjXl0M3UiPrweYv6FdVJLo6W/7yyojAF/A==")
 minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", counter = 1)
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     encoder = ce[0]
 
     pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     decoder = pe[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "incorrect_key_length")
@@ -318,11 +318,11 @@ end function
 // @returns {string | error}             - The message authentication code, encoded with 'mac_encoding' (default = base64)
 minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64", mac_encoding = "base64")
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
     encoder = ce[0]
 
     me = minicrypt.Encode.getEncoding(mac_encoding)
-    if me == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if me == null then return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
     decoder = me[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.Poly1305.mac", "incorrect_key_length")
@@ -492,7 +492,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     return ciphertext
 end function
 
-// Authenticates and decrypts a ciphertext. You can choose to skip the verification, but remember to call ChaCha20Poly1305.verify() manually. Returns [aad, plaintext]
+// Authenticates and decrypts a ciphertext. You can choose to skip the verification, but remember to call ChaCha20Poly1305.verify() manually. Returns [plaintext, aad]
 // @param {string}           key                    - A hex string, 32 bytes / 64 characters
 // @param {string}           ciphertext             - Text to decrypt. By default it expects a base64 string.
 // @param {number}           [do_verify]            - (optional) Boolean. If true (default) then verifies the ciphertext before deciphering. If set to false, it's strongly recommended to manually run ChaCha20Poly1305.verify() before calling this method.
@@ -503,11 +503,11 @@ end function
 // @example > ["Secrets secrets...", "You can look but ya can't touch"]
 minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     encoder = ce[0]
 
     pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
     decoder = pe[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "incorrect_key_length")
@@ -555,7 +555,7 @@ end function
 // @example > true
 minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encoding = "base64")
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "unsupported_encoding")
     encoder = ce[0]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "incorrect_key_length")
@@ -587,11 +587,11 @@ end function
 // @example > "You can look but ya can't touch"
 minicrypt.ChaCha20Poly1305.getAAD = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
     ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
     encoder = ce[0]
 
     pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
     decoder = pe[1]
 
     res = encoder(ciphertext)

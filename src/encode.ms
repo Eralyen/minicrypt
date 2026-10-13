@@ -117,21 +117,20 @@ end function
 // @returns {string | error}   - the decoded string
 minicrypt.Encode.decodeText15 = function(input, len)
     text = ""
-    if len % 2 != 0 then return minicrypt.Error("minicrypt.Encode.decodeText15", "odd_length")
+    //if len % 2 != 0 then return minicrypt.Error("minicrypt.Encode.decodeText15", "odd_length")
     if input.len != ceil(len / 4) then return minicrypt.Error("minicrypt.Encode.decodeText15", "length_mismatch")
     if len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeText15", "max_len_exceeded")
     if input.len == 0 then return ""
     POW2 = minicrypt.Encode.POW2
     acc = 0
     bits = 0
-    lastIdx = input.len - 1
     i = 0
     for n in input
         v = n
         w = 32
-        if i == lastIdx and len % 4 == 2 then
-            v = n % 65536
-            w = 16
+        if i == input.len - 1 and len % 4 > 0 then
+            w = 8 * (len % 4)
+            v = n % POW2[w]
         end if
         acc = acc + v * POW2[bits]
         bits = bits + w

@@ -113,8 +113,6 @@ test_encode_text15_boundaries = function
         end for
     end for
 
-    expectEqual(typeof(E.decodeText15([0], 1)), "error")
-    expectEqual(typeof(E.decodeText15([0], 3)), "error")
     expectEqual(typeof(E.decodeText15([], 2)), "error")
     expectEqual(typeof(E.decodeText15([0], 8)), "error")
     expectEqual(typeof(E.decodeText15([0, 0], 4)), "error")

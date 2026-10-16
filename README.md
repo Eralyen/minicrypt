@@ -6,27 +6,32 @@ Visit the [Wiki](https://github.com/Eralyen/minicrypt/wiki), or browse the [exam
 
 To start writing an application, import minicrypt.ms or just the modules you need. The imported modules are contained in `globals.minicrypt`.
 
-Greybel isn't required, but compilation without it is not being tested at this time.
+[greybel-vs](https://github.com/ayecue/greybel-vs) is not required, but compilation without it is not being tested at this time.
 
-If you have any questions or concerns, feel free to open an issue, or contact me on Discord or email.
+If you have any questions or concerns, feel free to open an issue, or contact me on my Discord or email.
 
 ## Algorithms
+
+Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focus on bleeding-edge, proven algorithms with excellent software efficiency.
+
 ### Symmetric Encryption
 - ChaCha: a stream cypher that should be much faster than AES in Greyscript and MiniScript applications.
 - ChaCha20-Poly1305: an AEAD algorithm that provides authentication and additional authenticated data in plaintext.
+
+### Hashing and key derivation:
+- BLAKE3: a fast hasing algorithm that supports generic hashing, keyed hashing, and key derivation.
 
 ### Authentication
 - Poly1305: a one-time keyed authentication algorithm
 
 ### Planned
-- A hashing function: at least one of:
-    - SHA-256
-    - BLAKE3
+- Public-key cryptography:
+    - Ed25519 (signing)
+    - X25519 (encryption)
 - A cryptographically secure RNG
-- A HMAC
-- Public-key cryptography: at least one of
-    - RSA
-    - Curve25519
+
+#### Under consideration
+- A PBKDF such as Argon2 or Balloon hashing
 
 ## Contributing
 Feedback, contributions, bug reports and suggestions are very welcome! See `CONTRIBUTING.md` and `SECURITY.md`

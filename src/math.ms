@@ -23,8 +23,11 @@ end function
 // @param {number}   b - rotation amount. Can be any safe integer
 // @returns {number}   - rotated value
 minicrypt.Math.rotl = function(a, b)
-    c = minicrypt.Math.POW2[32-b]
-    return ((a * minicrypt.Math.POW2[b]) + (a / c - a % c / c)) % 4294967296 //2^32
+    shl = minicrypt.Math.POW2[b]
+    shr = minicrypt.Math.POW2[32-b]
+    low = a % shr
+    high = a - low
+    return low * shl + high / shr
 end function
 
 // Rotate right (any overflow pops in from the left) a 32-bit value, using faster arithmetic functions
@@ -32,8 +35,11 @@ end function
 // @param {number}   b - rotation amount. Can be any safe integer
 // @returns {number}   - rotated value
 minicrypt.Math.rotr = function(a, b)
-    c = minicrypt.Math.POW2[b]
-    return ((a * minicrypt.Math.POW2[32-b]) + (a / c - a % c / c)) % 4294967296 //2^32
+    shl = minicrypt.Math.POW2[32-b]
+    shr = minicrypt.Math.POW2[b]
+    low = a % shr
+    high = a - low
+    return low * shl + high / shr
 end function
 
 end function //-------------

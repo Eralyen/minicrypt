@@ -19,7 +19,7 @@ Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focu
 - ChaCha20-Poly1305: an AEAD algorithm that provides authentication and additional authenticated data in plaintext.
 
 ### Hashing and key derivation:
-- BLAKE3: a fast hasing algorithm that supports generic hashing, keyed hashing, and key derivation.
+- BLAKE3: a fast hashing algorithm that supports generic hashing, keyed hashing, and key derivation.
 
 ### Authentication
 - Poly1305: a one-time keyed authentication algorithm

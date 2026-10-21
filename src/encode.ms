@@ -328,7 +328,7 @@ minicrypt.Encode.fromBase64 = function(b64)
 end function
 
 // Turns a hex string into a list of 32-bit integers.
-// @param {string}                        h - the hex string
+// @param {string}                 h - the hex string
 // @returns {list<number> | error}   - returns error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
 minicrypt.Encode.hexToB32 = function(h)
     if typeof(h) != "string" then return minicrypt.Error("minicrypt.Encode.hexToB32", "not_a_string")
@@ -353,21 +353,35 @@ minicrypt.Encode.hexToB32 = function(h)
     return output
 end function
 
-// Turns a list of 32-bit integers into a hex string
+// Turns a list of 32-bit integers into a hex string (little endian)
 // @param {list<number>} input - a list of 32-bit integers
-// @returns {string}           - the hex string
+// @returns {list<string>}     - a list of the hex strings
 minicrypt.Encode.B32ToHex = function(input)
-    output = []
+    output = ""
     for x in input
-        output.push(minicrypt.Encode.intToHex(x))
+        for i in [0, 1, 2, 3]
+            output = output + minicrypt.Encode.BYTE2HEX[x % 256]
+            x = (x - x % 256) / 256
+        end for
     end for
     return output
 end function
 
-// Turns a 32-bit integer into a hex string
+// Turns a list of 32-bit integers into a list of hex strings (big endian)
+// @param {list<number>} input - a list of 32-bit integers
+// @returns {list<string>}     - a list of the hex strings
+minicrypt.Encode.B32ToHexBE = function(input)
+    output = []
+    for x in input
+        output.push(minicrypt.Encode.intToHexBE(x))
+    end for
+    return output
+end function
+
+// Turns a 32-bit integer into a hex string (big endian)
 // @param {number}   n - a 32-bit integer
 // @returns {string}   - the hex string
-minicrypt.Encode.intToHex = function(n)
+minicrypt.Encode.intToHexBE = function(n)
     h = ""
     for i in range(0, 7)
         h = minicrypt.Encode.INT2HEX[n%16] + h

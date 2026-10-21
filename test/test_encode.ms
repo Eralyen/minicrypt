@@ -151,7 +151,8 @@ test_encode_hex_boundaries = function
     expectEqual(minicrypt.Encode.hexToB32(""), [0])
     expectEqual(typeof(minicrypt.Encode.hexToB32(12)), "error")
     expectEqual(typeof(minicrypt.Encode.hexToB32("01xz")), "error")
-    expectEqual(minicrypt.Encode.B32ToHex([0, 1, 4294967295]), ["00000000", "00000001", "ffffffff"])
+    expectEqual(minicrypt.Encode.B32ToHex([0, 1, 4294967295]), "0000000001000000ffffffff")
+    expectEqual(minicrypt.Encode.B32ToHexBE([0, 1, 4294967295]), ["00000000", "00000001", "ffffffff"])
     expectEqual(minicrypt.Encode.hexBytesToB32("00:01:02:03:04"), [50462976, 4])
 end function
 TEST "ENCODE - Hex conversion boundaries", @test_encode_hex_boundaries

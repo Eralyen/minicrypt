@@ -7,6 +7,7 @@
 
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
+import_code("./blake3.ms")
 import_code("./bigint.ms")
 import_code("./math.ms")
 import_code("./encode.ms")
@@ -141,19 +142,9 @@ end function
 // @params {list<number>}  plaintext - a list of 32-bit integers.
 // @returns {list<number>}           - a list of 3 32-bit integers
 minicrypt.ChaCha.getHedgedNonce = function(plaintext)
-    key = []
-    for i in range(8)
-        key.push(floor(rnd * 4294967296)) //2^32
-    end for
-    otn = [hash(plaintext) % 4294967296,
-        hash(plaintext + [0]) % 4294967296,
-        hash(plaintext + [1]) % 4294967296,
-        ]
-    if otn[0] < 0 then otn[0] = otn[0] + 4294967296
-    if otn[1] < 0 then otn[1] = otn[1] + 4294967296
-    if otn[2] < 0 then otn[2] = otn[2] + 4294967296
-    zeros = [0, 0, 0]
-    nonce = minicrypt.ChaCha.chacha(key, otn, zeros, 12)
+    hash_state = minicrypt.BLAKE3.startDeriveKey(plaintext, plaintext.len*4)
+    minicrypt.BLAKE3.updateHash(hash_state, [floor(rnd * 4294967296)], 4)
+    nonce = minicrypt.BLAKE3.finalizeHash(hash_state, 3)
     return nonce
 end function
 

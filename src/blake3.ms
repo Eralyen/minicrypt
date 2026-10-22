@@ -206,7 +206,7 @@ end function
 // @description hash_state[1] = key
 // @description hash_state[2] = CV stack
 // @description hash_state[3] = flags
-// @param {list<number>} key - the key. A list of 32-bit integers
+// @param {list<number>} key - the 256-bit key. A list of 8 32-bit integers
 // @returns {list}
 minicrypt.BLAKE3.startKeyedHash = function(key)
     flags = KEYED_HASH
@@ -316,7 +316,7 @@ end function
 
 // Finalizes the hash and returns the result, by default a 256-bit number (as a list of 8 32-bit integers)
 // @param {list}   hash_state - the hash state, a list of 4 32-bit integers
-// @param {number} [out_len]  - the desired length of the output in words. If you need to a byte length that's not a multiple of 4, truncate it.
+// @param {number} [out_len]  - (optional) the desired length of the output in words. If you need to a byte length that's not a multiple of 4, truncate it.
 // @returns{list<number>}     - the output hash, a list of out_len 32-bit 
 minicrypt.BLAKE3.finalizeHash = function(hash_state, out_len = 8)
     // Starting with the Output from the current chunk, compute all the
@@ -336,14 +336,114 @@ minicrypt.BLAKE3.finalizeHash = function(hash_state, out_len = 8)
     return output_hash
 end function
 
-minicrypt.BLAKE3.hash = function
-    exit("UNIMPLEMENTED")
+// Hashes an input string, returning a 32-byte hex string.
+// @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
+// @param {number} [out_byte_len]   - (optional) byte length of the output hash
+// @param {string} [input_encoding] - (optional) format to encode the input string with
+// @param {string} [hash_encoding]  - (optional) format to encode the output hash with
+// @returns {string}                - the hash
+// @example minicrypt.BLAKE3.hash("Hello BLAKE3!")
+minicrypt.BLAKE3.hash = function(input, out_byte_len = 32, input_encoding = "16bit", hash_encoding = "hex")
+    ie = minicrypt.Encode.getEncoding(input_encoding)
+    if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    encode = ie[0]
+
+    he = minicrypt.Encode.getEncoding(hash_encoding)
+    if he == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    decode = he[1]
+
+    res = encode(input)
+    if typeof(res) == "error" then return res
+    input_raw = res[0]
+    input_len = res[1]
+
+    hash_state = minicrypt.BLAKE3.startHash
+    minicrypt.BLAKE3.updateHash(hash_state, input_raw, input_len)
+    hash_raw = minicrypt.BLAKE3.finalizeHash(hash_state, ceil(out_byte_len/4))
+
+    hash = decode(hash_raw, out_byte_len)
+    return hash
 end function
-minicrypt.BLAKE3.keyedHash = function
-    exit("UNIMPLEMENTED")
+
+// Hashes an input string using a secret key, returning a 32-byte hex string.
+// @param {string} key              - the secret key. By default a hex string, 32 bytes / 64 characters
+// @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
+// @param {number} [out_byte_len]   - (optional) byte length of the output hash
+// @param {string} [input_encoding] - (optional) format to encode the input string with
+// @param {string} [key_encoding]   - (optional) format to encode the secret key with
+// @param {string} [hash_encoding]  - (optional) format to encode the output hash with
+// @returns {string}                - the hash
+// @example minicrypt.BLAKE3.keyedHash("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "Hello BLAKE3!")
+minicrypt.BLAKE3.keyedHash = function(key, input, out_byte_len = 32, input_encoding = "16bit", key_encoding = "hex", hash_encoding = "hex")
+    ie = minicrypt.Encode.getEncoding(input_encoding)
+    if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    encode = ie[0]
+
+    ke = minicrypt.Encode.getEncoding(key_encoding)
+    if ke == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    key_encode = ke[0]
+
+    he = minicrypt.Encode.getEncoding(hash_encoding)
+    if he == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    decode = he[1]
+
+    res = key_encode(key)
+    if typeof(res) == "error" then return res
+    key_raw = res[0]
+    key_len = res[1]
+    if key_len != 32 then return minicrypt.Error("minicrypt.BLAKE3.keyedHash", "invalid_key_length")
+
+    res = encode(input)
+    if typeof(res) == "error" then return res
+    input_raw = res[0]
+    input_len = res[1]
+
+    hash_state = minicrypt.BLAKE3.startKeyedHash(key_raw)
+    minicrypt.BLAKE3.updateHash(hash_state, input_raw, input_len)
+    hash_raw = minicrypt.BLAKE3.finalizeHash(hash_state, ceil(out_byte_len/4))
+
+    hash = decode(hash_raw, out_byte_len)
+    return hash
 end function
-minicrypt.BLAKE3.deriveKey = function
-    exit("UNIMPLEMENTED")
+
+// Hashes an input string using a secret key, returning a 32-byte hex string.
+// @param {string} key              - the secret key. By default a hex string, 32 bytes / 64 characters
+// @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
+// @param {number} [out_byte_len]   - (optional) byte length of the output hash
+// @param {string} [input_encoding] - (optional) format to encode the input string with
+// @param {string} [key_encoding]   - (optional) format to encode the secret key with
+// @param {string} [hash_encoding]  - (optional) format to encode the output hash with
+// @returns {string}                - the hash
+// @example minicrypt.BLAKE3.deriveKey("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "file encryption key for MyCoolApp 2026-10-22 12:53:16")
+minicrypt.BLAKE3.deriveKey = function(input, context, out_byte_len = 32, input_encoding = "hex", context_encoding = "8bit", output_encoding = "hex")
+    ie = minicrypt.Encode.getEncoding(input_encoding)
+    if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    encode = ie[0]
+
+    ce = minicrypt.Encode.getEncoding(context_encoding)
+    if ce == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    context_encode = ce[0]
+
+    oe = minicrypt.Encode.getEncoding(output_encoding)
+    if oe == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    decode = oe[1]
+
+    res = encode(input)
+    if typeof(res) == "error" then return res
+    input_raw = res[0]
+    input_len = res[1]
+
+    res = context_encode(context)
+    if typeof(res) == "error" then return res
+    context_raw = res[0]
+    context_len = res[1]
+
+    hash_state = minicrypt.BLAKE3.startDeriveKey(context_raw, context_len)
+    minicrypt.BLAKE3.updateHash(hash_state, input_raw, input_len)
+    key_raw = minicrypt.BLAKE3.finalizeHash(hash_state, ceil(out_byte_len/4))
+
+    key = decode(key_raw, out_byte_len)
+    return key
 end function
 
 minicrypt.BLAKE3.getHasher = function

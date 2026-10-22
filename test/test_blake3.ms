@@ -229,7 +229,7 @@ INPUT = ""
 for i in range(0, 102400)
     INPUT = INPUT + minicrypt.Encode.BYTE2HEX[i % 251]
 end for
-INPUT = minicrypt.Encode.hexToB32(INPUT)
+INPUT = minicrypt.Encode.encodeHex(INPUT)[0]
 
 KEY = minicrypt.Encode.encodeText8(tests.key)[0]
 CONTEXT = minicrypt.Encode.encodeText8(tests.context_string)[0]
@@ -240,8 +240,8 @@ blake3Hash = function
         input = INPUT[:ceil(case.input_len/4)]
         hash_state = minicrypt.BLAKE3.startHash
         minicrypt.BLAKE3.updateHash(hash_state, input, case.input_len)
-        hash = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state))
-        hash_ext = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
+        hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state))
+        hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
         expectEqual(hash, case.hash[:64], "Hash of input length " + case.input_len)
         expectEqual(hash_ext, case.hash, "Extended hash of input length " + case.input_len)
     end for
@@ -253,8 +253,8 @@ blake3KeyedHash = function
         input = INPUT[:ceil(case.input_len/4)]
         hash_state = minicrypt.BLAKE3.startKeyedHash(KEY)
         minicrypt.BLAKE3.updateHash(hash_state, input, case.input_len)
-        hash = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state))
-        hash_ext = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
+        hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state))
+        hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
         expectEqual(hash, case.keyed_hash[:64], "keyed hash of input length " + case.input_len)
         expectEqual(hash_ext, case.keyed_hash, "Extended keyed hash of input length " + case.input_len)
     end for
@@ -266,8 +266,8 @@ blake3KeyDerivation = function
         input = INPUT[:ceil(case.input_len/4)]
         hash_state = minicrypt.BLAKE3.startDeriveKey(CONTEXT, tests.context_string.len)
         minicrypt.BLAKE3.updateHash(hash_state, input, case.input_len)
-        hash = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state))
-        hash_ext = minicrypt.Encode.B32ToHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
+        hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state))
+        hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hash_state, 33))[:-2]
         expectEqual(hash, case.derive_key[:64], "Key of input length " + case.input_len)
         expectEqual(hash_ext, case.derive_key, "Extended key of input length " + case.input_len)
     end for

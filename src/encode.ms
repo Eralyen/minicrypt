@@ -330,33 +330,38 @@ end function
 // Turns a hex string into a list of 32-bit integers.
 // @param {string}                 h - the hex string
 // @returns {list<number> | error}   - returns error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
-minicrypt.Encode.hexToB32 = function(h)
-    if typeof(h) != "string" then return minicrypt.Error("minicrypt.Encode.hexToB32", "not_a_string")
+minicrypt.Encode.encodeHex = function(h)
+    if typeof(h) != "string" then return minicrypt.Error("minicrypt.Encode.encodeHex", "not_a_string")
+    if h.len % 2 != 0 then return minicrypt.Error("minicrypt.Encode.encodeHex", "odd_digit_amount")
     if h.len >= 2 and h[:2] == "0x" then h = h[2:]
-    if h == "" then return [0]
+    if h == "" then return [[], 0]
     output = []
     HEX2INT = minicrypt.Encode.HEX2INT
     for i in range(0, h.len - 1, 8)
         x = 0
         for j in range(0, 7, 2)
             if i + j >= h.len then break
-            if not HEX2INT.hasIndex(h[i+j]) then return minicrypt.Error("minicrypt.Encode.hexToB32", "invalid_char")
+            if not HEX2INT.hasIndex(h[i+j]) then return minicrypt.Error("minicrypt.Encode.encodeHex", "invalid_char")
             byte = HEX2INT[h[i+j]] * 16
             if i + j + 1 < h.len then
-                if not HEX2INT.hasIndex(h[i+j+1]) then return minicrypt.Error("minicrypt.Encode.hexToB32", "invalid_char")
+                if not HEX2INT.hasIndex(h[i+j+1]) then return minicrypt.Error("minicrypt.Encode.encodeHex", "invalid_char")
                 byte = byte + HEX2INT[h[i+j+1]]
             end if
             x = x + byte * minicrypt.Encode.POW2[j*4]
         end for
         output.push(x)
     end for
-    return output
+    return [output, h.len/2]
 end function
 
 // Turns a list of 32-bit integers into a hex string (little endian)
 // @param {list<number>} input - a list of 32-bit integers
+// @param {number}       [len] - (optional) the length of 'input' in bytes. Max 2^24
 // @returns {list<string>}     - a list of the hex strings
-minicrypt.Encode.B32ToHex = function(input)
+minicrypt.Encode.decodeHex = function(input, len = null)
+    if input.len == 0 then return ""
+    if len == null then len = input.len * 4
+    if len > 16777216 then return minicrypt.Error("minicrypt.Encode.decodeHex", "max_len_exceeded") // 16777216 = 2^24
     output = ""
     for x in input
         for i in [0, 1, 2, 3]
@@ -364,7 +369,7 @@ minicrypt.Encode.B32ToHex = function(input)
             x = (x - x % 256) / 256
         end for
     end for
-    return output
+    return output[:len*2]
 end function
 
 // Turns a list of 32-bit integers into a list of hex strings (big endian)
@@ -422,6 +427,8 @@ minicrypt.Encode.getEncoding = function(type)
         return [@minicrypt.Encode.encodeText8, @minicrypt.Encode.decodeText8]
     else if type == "base64" then 
         return [@minicrypt.Encode.fromBase64, @minicrypt.Encode.toBase64]
+    else if type == "hex" then 
+        return [@minicrypt.Encode.encodeHex, @minicrypt.Encode.decodeHex]
     else if typeof(type) == "list" then
         return type
     else if type == "bi32" then

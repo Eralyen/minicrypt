@@ -154,7 +154,7 @@ while true
         u = u.to_int
         if u == 1 then 
             byte = user_input("Byte position (hex)> ")
-            byte_int = encode.hexToB32(byte)
+            byte_int = encode.encodeHex(byte)[0]
             if typeof(byte_int) == "error" then
                 print "<color=red>" + byte_int.code
                 wait(1)

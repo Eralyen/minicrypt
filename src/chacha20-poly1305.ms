@@ -177,7 +177,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     decoder = ce[1]
     
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.encrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(plaintext)
@@ -185,7 +185,7 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     plaintext_enc = res[0]
     plaintext_len = res[1]
 
-    if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
+    if typeof(nonce) == "string" then nonce = minicrypt.Encode.encodeHex(nonce)[0]
     if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(plaintext_enc)
 
     ciphertext_enc = minicrypt.ChaCha.chacha(key_enc, nonce, plaintext_enc, plaintext_len, counter)
@@ -217,7 +217,7 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
     decoder = pe[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(ciphertext)
@@ -305,7 +305,7 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     decoder = me[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.Poly1305.mac", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     res = encoder(ciphertext)
@@ -445,7 +445,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     decoder = ce[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     enc = encoder(aad)
@@ -458,7 +458,7 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     plaintext_enc = enc[0]
     plaintext_len_bytes = enc[1]
 
-    if typeof(nonce) == "string" then nonce = minicrypt.Encode.hexToB32(nonce)
+    if typeof(nonce) == "string" then nonce = minicrypt.Encode.encodeHex(nonce)[0]
     if nonce == null then nonce = minicrypt.ChaCha20.getHedgedNonce(aad_enc + plaintext_enc)
     
     enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
@@ -490,7 +490,7 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true,
     decoder = pe[1]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(ciphertext)
@@ -538,7 +538,7 @@ minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encodin
     encoder = ce[0]
 
     if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "incorrect_key_length")
-    key_enc = minicrypt.Encode.hexToB32(key)
+    key_enc = minicrypt.Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     res = encoder(ciphertext)

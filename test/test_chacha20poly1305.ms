@@ -140,7 +140,7 @@ TEST "CHACHA20-POLY1305 - High-level encodings and authentication", @test_chacha
 test_chacha20poly1305_poly1305_encodings = function
     key = "85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b"
     message = "MAC wrapper input"
-    raw_key = minicrypt.Encode.hexToB32(key)
+    raw_key = minicrypt.Encode.encodeHex(key)[0]
     raw_message = minicrypt.Encode.encodeText8(message)
     expected = minicrypt.Poly1305.macRaw(raw_key, raw_message[0], raw_message[1])
 
@@ -164,7 +164,7 @@ TEST "CHACHA20-POLY1305 - Poly1305.mac encodings", @test_chacha20poly1305_poly13
 test_chacha20poly1305_nonce_custom_encoding = function
     key = "171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c"
     nonce_hex = "010000000200000003000000"
-    nonce = minicrypt.Encode.hexToB32(nonce_hex)
+    nonce = minicrypt.Encode.encodeHex(nonce_hex)[0]
     aad = "custom aad"
     plaintext = "custom encoded plaintext"
 
@@ -196,7 +196,7 @@ end function
 TEST "CHACHA20-POLY1305 - Nonce and custom encoding paths", @test_chacha20poly1305_nonce_custom_encoding
 
 test_chacha20poly1305_nonce_split_errors = function
-    key = minicrypt.Encode.hexToB32("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
     plaintext = minicrypt.Encode.encodeText8("nonce source")[0]
     nonce = minicrypt.ChaCha.getHedgedNonce(plaintext)
     expectEqual(nonce.len, 3, "Synthetic nonce has three words")

@@ -57,7 +57,7 @@ minicrypt.Utils.hexdump = function(b64, encoding="base64")
 
     hexdump = []
     for i in range(0, bytes.len-1, 16)
-        line = minicrypt.Encode.intToHex(i) + "  "
+        line = minicrypt.Encode.intToHexBE(i) + "  "
         block = bytes[i:i+16]
         for b in block
             line = line + minicrypt.Encode.BYTE2HEX[b] + " "

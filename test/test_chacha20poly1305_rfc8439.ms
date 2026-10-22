@@ -69,7 +69,7 @@ test_rfc8439_state_quarter_round = function
         sample_state_b32.push(bitwiseHexToInt(s))
     end for
     minicrypt.ChaCha.QR(sample_state_b32, 2, 7, 8, 13)
-    expectEqual(minicrypt.Encode.B32ToHex(sample_state_b32), expected_state)
+    expectEqual(minicrypt.Encode.B32ToHexBE(sample_state_b32), expected_state)
 end function
 TEST "RFC 8439 - Quarter Round on the ChaCha State", @test_rfc8439_state_quarter_round
 
@@ -87,7 +87,7 @@ test_rfc8439_chacha_block = function
         "13121110", "17161514", "1b1a1918", "1f1e1d1c",
         "00000001", "09000000", "4a000000", "00000000",
         ]
-    expectEqual(minicrypt.Encode.B32ToHex(state), expected_state, "State initialization")
+    expectEqual(minicrypt.Encode.B32ToHexBE(state), expected_state, "State initialization")
 
     expected_final = [
         "e4e7f110", "15593bd1", "1fdd0f50", "c47120a3",
@@ -96,7 +96,7 @@ test_rfc8439_chacha_block = function
         "d19c12b5", "b94e16de", "e883d0cb", "4e3c50a2",
         ]
     minicrypt.ChaCha.chachaBlock(output, state)
-    expectEqual(minicrypt.Encode.B32ToHex(output), expected_final, "State after 20 ChaChaBlock rounds + addition")
+    expectEqual(minicrypt.Encode.B32ToHexBE(output), expected_final, "State after 20 ChaChaBlock rounds + addition")
 end function
 TEST "RFC 8439 - ChaCha20 Block Function", @test_rfc8439_chacha_block
 
@@ -175,7 +175,7 @@ test_rfc8439_chacha_block_vectors = function
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
-    expectEqual(minicrypt.Encode.B32ToHex(final_state), expected_state, "Test Vector #1")
+    expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #1")
     // The keystream is just a different way to write the ChaCha state.
     // If the test above this comment passes, then the keystream is also correct
 
@@ -194,7 +194,7 @@ test_rfc8439_chacha_block_vectors = function
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
-    expectEqual(minicrypt.Encode.B32ToHex(final_state), expected_state, "Test Vector #2")
+    expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #2")
     // The keystream is just a different way to write the ChaCha state.
     // If the test above this comment passes, then the keystream is also correct
     
@@ -213,7 +213,7 @@ test_rfc8439_chacha_block_vectors = function
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
-    expectEqual(minicrypt.Encode.B32ToHex(final_state), expected_state, "Test Vector #3")
+    expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #3")
     // The keystream is just a different way to write the ChaCha state.
     // If the test above this comment passes, then the keystream is also correct
 
@@ -232,7 +232,7 @@ test_rfc8439_chacha_block_vectors = function
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
-    expectEqual(minicrypt.Encode.B32ToHex(final_state), expected_state, "Test Vector #4")
+    expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #4")
     // The keystream is just a different way to write the ChaCha state.
     // If the test above this comment passes, then the keystream is also correct
 
@@ -251,7 +251,7 @@ test_rfc8439_chacha_block_vectors = function
     final_state = [0] * 16
     minicrypt.ChaCha.chachaBlock(final_state, state)
 
-    expectEqual(minicrypt.Encode.B32ToHex(final_state), expected_state, "Test Vector #5")
+    expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #5")
     // The keystream is just a different way to write the ChaCha state.
     // If the test above this comment passes, then the keystream is also correct
 end function

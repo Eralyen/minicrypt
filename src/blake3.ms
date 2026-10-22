@@ -65,7 +65,6 @@ rotr = @minicrypt.Math.rotr
 // @param {number}       b     - the number of input bytes, 32-bit
 // @param {number} d           - a set of domain separation bit flags
 // @returns {list<number>}     - a list of 16 32-bit integers
-
 minicrypt.BLAKE3.compress = function(h, m, t, b, d)
     v = h[:] + minicrypt.BLAKE3.IV[:4] + t + [b, d]
     for i in [0,1,2,3,4,5]
@@ -116,12 +115,12 @@ minicrypt.BLAKE3.rootOutputBytes = function(output, out_len = 16)
     return out_block[:out_len]
 end function
 
-// Takes 2 child nodes and creates the state right before compression
-// output[0] = input chaining value
-// output[1] = block
-// output[2] = block counter
-// output[3] = block length
-// output[4] = flags
+// Takes 2 child nodes and creates the state right before compression: 
+// @description output[0] = input chaining value
+// @description output[1] = block
+// @description output[2] = block counter
+// @description output[3] = block length
+// @description output[4] = flags
 // @param {list<number>} left_child_cv  - a list of 8 32-bit integers
 // @param {list<number>} right_child_cv - a list of 8 32-bit integers
 // @param {list<number>} key            - the key or IV. A list of 32-bit integers
@@ -143,17 +142,22 @@ minicrypt.BLAKE3.parentCV = function(left_child_cv, right_child_cv, key, flags)
     return minicrypt.BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8]
 end function
 
+// Returns the state for a new chunk: [chaining_value, chunk_counter, block, blocks_compressed, flags, pad_bytes]
+// @param {list<number>} key      - the key or IV. A list of 32-bit integers
+// @param {number}       counter  - the chunk counter
+// @param {number}       flags    - a set of domain separation bit flags
+// @returns {list}>
 minicrypt.BLAKE3.newChunkState = function(key, counter, flags)
     return [key, counter, [], 0, flags, 0]
 end function
 
 // Add more input to be hashed, which updates the chunk state. This can be called several times.
-// chunk_state[0] = chaining_value
-// chunk_state[1] = chunk_counter
-// chunk_state[2] = block
-// chunk_state[3] = blocks_compressed
-// chunk_state[4] = flags
-// chunk_state[5] = pad bytes, 0-3
+// @description chunk_state[0] = chaining_value
+// @description chunk_state[1] = chunk_counter
+// @description chunk_state[2] = block
+// @description chunk_state[3] = blocks_compressed
+// @description chunk_state[4] = flags
+// @description chunk_state[5] = pad_bytes, 0-3
 // @param {list}         chunk_state - a list of the chunk state, see above
 // @param {list<number>} input       - part of the input, a list of 32-bit integers
 // @returns {null}
@@ -185,24 +189,40 @@ minicrypt.BLAKE3.outputChunks = function(chunk_state)
     return [chunk_state[0], chunk_state[2] + [0] * (16 - chunk_state[2].len), chunk_state[1], chunk_state[2].len * 4 - chunk_state[5], flags]
 end function
 
-// hash_state[0] = chunk state
-// hash_state[1] = key
-// hash_state[2] = CV stack
-// hash_state[3] = flags
+// Returns the beginning state for an unkeyed hash. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// @description hash_state[0] = chunk state
+// @description hash_state[1] = key
+// @description hash_state[2] = CV stack
+// @description hash_state[3] = flags
+// @returns {list}
 minicrypt.BLAKE3.startHash = function
     chunk_state = minicrypt.BLAKE3.newChunkState(minicrypt.BLAKE3.IV, [0, 0], 0)
     hash_state = [chunk_state, minicrypt.BLAKE3.IV, [], 0]
     return hash_state
 end function
 
+// Returns the beginning state for a keyed hash. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// @description hash_state[0] = chunk state
+// @description hash_state[1] = key
+// @description hash_state[2] = CV stack
+// @description hash_state[3] = flags
+// @param {list<number>} key - the key. A list of 32-bit integers
+// @returns {list}
 minicrypt.BLAKE3.startKeyedHash = function(key)
     flags = KEYED_HASH
     chunk_state = minicrypt.BLAKE3.newChunkState(key, [0, 0], flags)
     hash_state = [chunk_state, key, [], flags]
     return hash_state
 end function
-
-minicrypt.BLAKE3.startDeriveKey = function(context, byte_len = null)
+// Returns the beginning state for key derivation. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// @description hash_state[0] = chunk state
+// @description hash_state[1] = key
+// @description hash_state[2] = CV stack
+// @description hash_state[3] = flags
+// @param {list<number>} context  - the key context. A list of 32-bit integers
+// @param {list<number>} byte_len - the length of the context in bytes
+// @returns {list}
+minicrypt.BLAKE3.startDeriveKey = function(context, byte_len)
     key = minicrypt.BLAKE3.IV
     chunk_state = minicrypt.BLAKE3.newChunkState(key, [0, 0], DERIVE_KEY_CONTEXT)
     hash_state = [chunk_state, key, [], DERIVE_KEY_CONTEXT]
@@ -228,8 +248,12 @@ minicrypt.BLAKE3.addChunkChainingValue = function(cv_stack, new_cv, total_chunks
     cv_stack.push(new_cv)
 end function
 
-minicrypt.BLAKE3.updateHash = function(hash_state, input, byte_len = null)
-    if byte_len == null then byte_len = input.len * 4
+// Hashes the input. Can be called multiple times to keep adding input data. Updates the hash_state in place, follow it up with minicrypt.BLAKE3.finalizeHash()
+// @param {list}         hash_state - the hash state, a list of 4 32-bit integers
+// @param {list<number>} input      - the input, a list of 32-bit integers
+// @param {number}       byte_len   - the length of the input in bytes
+// @returns {null}
+minicrypt.BLAKE3.updateHash = function(hash_state, input, byte_len)
     if byte_len == 0 then return
     r = byte_len % 4       // valid bytes in the last input word (0 = all complete)
     n = (byte_len - r) / 4 // number of complete words
@@ -290,30 +314,44 @@ minicrypt.BLAKE3.updateHash = function(hash_state, input, byte_len = null)
     hash_state[0][5] = pad
 end function
 
+// Finalizes the hash and returns the result, by default a 256-bit number (as a list of 8 32-bit integers)
+// @param {list}   hash_state - the hash state, a list of 4 32-bit integers
+// @param {number} [out_len]  - the desired length of the output in words. If you need to a byte length that's not a multiple of 4, truncate it.
+// @returns{list<number>}     - the output hash, a list of out_len 32-bit 
 minicrypt.BLAKE3.finalizeHash = function(hash_state, out_len = 8)
-        // Starting with the Output from the current chunk, compute all the
-        // parent chaining values along the right edge of the tree, until we
-        // have the root Output.
-        output = minicrypt.BLAKE3.outputChunks(hash_state[0])
-        parent_nodes_remaining = hash_state[2].len
-        while parent_nodes_remaining > 0
-            parent_nodes_remaining = parent_nodes_remaining - 1
-            output = minicrypt.BLAKE3.parentOutput(
-                hash_state[2][parent_nodes_remaining],
-                minicrypt.BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8],
-                hash_state[1],
-                hash_state[3]) // flag
-        end while
-        output_hash = minicrypt.BLAKE3.rootOutputBytes(output, out_len)
-        return output_hash
+    // Starting with the Output from the current chunk, compute all the
+    // parent chaining values along the right edge of the tree, until we
+    // have the root Output.
+    output = minicrypt.BLAKE3.outputChunks(hash_state[0])
+    parent_nodes_remaining = hash_state[2].len
+    while parent_nodes_remaining > 0
+        parent_nodes_remaining = parent_nodes_remaining - 1
+        output = minicrypt.BLAKE3.parentOutput(
+            hash_state[2][parent_nodes_remaining],
+            minicrypt.BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8],
+            hash_state[1],
+            hash_state[3]) // flag
+    end while
+    output_hash = minicrypt.BLAKE3.rootOutputBytes(output, out_len)
+    return output_hash
 end function
 
-minicrypt.BLAKE3.hash
-minicrypt.BLAKE3.keyedHash
-minicrypt.BLAKE3.deriveKey
+minicrypt.BLAKE3.hash = function
+    exit("UNIMPLEMENTED")
+end function
+minicrypt.BLAKE3.keyedHash = function
+    exit("UNIMPLEMENTED")
+end function
+minicrypt.BLAKE3.deriveKey = function
+    exit("UNIMPLEMENTED")
+end function
 
-minicrypt.BLAKE3.getHasher
-minicrypt.BLAKE3.getKeyedHasher
+minicrypt.BLAKE3.getHasher = function
+    exit("UNIMPLEMENTED")
+end function
+minicrypt.BLAKE3.getKeyedHasher = function
+    exit("UNIMPLEMENTED")
+end function
 
 end function //-------------
 

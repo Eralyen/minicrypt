@@ -461,14 +461,14 @@ minicrypt.BLAKE3.keyedHash = function(key, input, out_byte_len = 32, input_encod
     return keyed_hasher.finalize(out_byte_len, hash_encoding)
 end function
 
-// Hashes an input string using a secret key, returning a 32-byte hex string.
-// @param {string} key              - the secret key. By default a hex string, 32 bytes / 64 characters
-// @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
-// @param {number} [out_byte_len]   - (optional) byte length of the output hash
-// @param {string} [input_encoding] - (optional) format to encode the input string with
-// @param {string} [key_encoding]   - (optional) format to encode the secret key with
-// @param {string} [hash_encoding]  - (optional) format to encode the output hash with
-// @returns {string | error}        - the hash
+// Derives a new key based on an existing key and an arbitrary context string. Human readable passwords should not be used as the input key, but human readable context is okay and recommended.
+// @param {string} input              - the original key. By default a hex string
+// @param {string} context            - a context string. By default it supports 8 bit characters
+// @param {number} [out_byte_len]     - (optional) byte length of the output hash
+// @param {string} [input_encoding]   - (optional) format to encode the input string with
+// @param {string} [context_encoding] - (optional) format to encode the context string with
+// @param {string} [output_encoding]  - (optional) format to encode the output key with
+// @returns {string | error}          - the new key
 // @example minicrypt.BLAKE3.deriveKey("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "file encryption key for MyCoolApp 2026-10-22 12:53:16")
 minicrypt.BLAKE3.deriveKey = function(input, context, out_byte_len = 32, input_encoding = "hex", context_encoding = "8bit", output_encoding = "hex")
     ie = minicrypt.Encode.getEncoding(input_encoding)

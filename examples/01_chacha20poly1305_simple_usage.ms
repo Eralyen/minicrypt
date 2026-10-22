@@ -1,3 +1,5 @@
+// See https://github.com/Eralyen/minicrypt/wiki/ChaCha20%E2%80%90Poly1305 for more info
+
 import_code("../minicrypt.ms")
 c20p = minicrypt.ChaCha20Poly1305
 

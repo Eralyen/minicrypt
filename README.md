@@ -18,19 +18,19 @@ Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focu
 - ChaCha: a stream cypher that should be much faster than AES in Greyscript and MiniScript applications.
 - ChaCha20-Poly1305: an AEAD algorithm that provides authentication and additional authenticated data in plaintext.
 
-### Hashing and key derivation:
-- BLAKE3: a fast hashing algorithm that supports generic hashing, keyed hashing, and key derivation.
+### Hashing and key derivation
+- BLAKE3: a fast, cryptographically secure hashing algorithm that supports generic hashing, keyed hashing, and key derivation.
 
-### Authentication
-- Poly1305: a one-time keyed authentication algorithm
+### Random Number Generation
+- A ChaCha8-based cryptographically secure PRNG, seeded by:
+- An entropy harvesting function, which generates real randomness from CPU jitters.
 
-### Planned
-- Public-key cryptography:
-    - Ed25519 (signing)
-    - X25519 (encryption)
-- A cryptographically secure RNG
+## Planned
+### Public-key cryptography
+- Ed25519 (signing)
+- X25519 (encryption)
 
-#### Under consideration
+### Under consideration
 - A PBKDF such as Argon2 or Balloon hashing
 
 ## Contributing

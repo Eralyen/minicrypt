@@ -1,5 +1,5 @@
 // https://github.com/dchest/tweetnacl-js/blob/master/nacl.js
-// https://github.com/BernhardZat/pure-lua-5.1-crypto/blob/main/crypto/x25519/x25519.lua
+// https://www.rfc-editor.org/info/rfc7748
 
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
@@ -1200,6 +1200,144 @@ minicrypt.Field25519.invert = function(w, i)
         sq(w, w)
         if a != 2 and a != 4 then mul(w, w, b)
     end for
+end function
+
+minicrypt.Field25519.cswap = function(p, q, b)
+    x = p[0]
+    y = q[0]
+    t = b * (x - y)
+    p[0] = x - t
+    q[0] = y + t
+    x = p[1]
+    y = q[1]
+    t = b * (x - y)
+    p[1] = x - t
+    q[1] = y + t
+    x = p[2]
+    y = q[2]
+    t = b * (x - y)
+    p[2] = x - t
+    q[2] = y + t
+    x = p[3]
+    y = q[3]
+    t = b * (x - y)
+    p[3] = x - t
+    q[3] = y + t
+    x = p[4]
+    y = q[4]
+    t = b * (x - y)
+    p[4] = x - t
+    q[4] = y + t
+    x = p[5]
+    y = q[5]
+    t = b * (x - y)
+    p[5] = x - t
+    q[5] = y + t
+    x = p[6]
+    y = q[6]
+    t = b * (x - y)
+    p[6] = x - t
+    q[6] = y + t
+    x = p[7]
+    y = q[7]
+    t = b * (x - y)
+    p[7] = x - t
+    q[7] = y + t
+    x = p[8]
+    y = q[8]
+    t = b * (x - y)
+    p[8] = x - t
+    q[8] = y + t
+    x = p[9]
+    y = q[9]
+    t = b * (x - y)
+    p[9] = x - t
+    q[9] = y + t
+    x = p[10]
+    y = q[10]
+    t = b * (x - y)
+    p[10] = x - t
+    q[10] = y + t
+    x = p[11]
+    y = q[11]
+    t = b * (x - y)
+    p[11] = x - t
+    q[11] = y + t
+    x = p[12]
+    y = q[12]
+    t = b * (x - y)
+    p[12] = x - t
+    q[12] = y + t
+    x = p[13]
+    y = q[13]
+    t = b * (x - y)
+    p[13] = x - t
+    q[13] = y + t
+    x = p[14]
+    y = q[14]
+    t = b * (x - y)
+    p[14] = x - t
+    q[14] = y + t
+    x = p[15]
+    y = q[15]
+    t = b * (x - y)
+    p[15] = x - t
+    q[15] = y + t
+end function
+
+minicrypt.Field25519.scalarMult = function(q, n, p)
+    POW2 = minicrypt.Field25519.POW2
+    cswap = @minicrypt.Field25519.cswap
+    A     = @minicrypt.Field25519.add
+    Z     = @minicrypt.Field25519.sub
+    M     = @minicrypt.Field25519.mul
+    S     = @minicrypt.Field25519.square
+    I     = @minicrypt.Field25519.invert
+    _121665 = [56129,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+    u = p[:]
+    u[15] = u[15] % 32768 // Discard bit 255
+    a = [1] + [0] * 15
+    b = u[:]
+    c = [0] * 16
+    d = [1] + [0] * 15
+    e = [0] * 16
+    f = [0] * 16
+    z = n[:]
+    z[15] = z[15] % 16384 + 16384 // discard top 2 bits and set the second highest bit
+    z[0] = z[0] - z[0] % 8        // discard bottom 3 bits
+
+    // Computing r = the i-th bit. 1 or 0.
+    for i in range(254)
+        i0 = i % 16
+        limb = z[(i-i0)/16]
+        r = (limb % POW2[i0+1]) >= POW2[i0]
+        cswap(a, b, r)
+        cswap(c, d, r)
+        A(e,a,c)
+        Z(a,a,c)
+        A(c,b,d)
+        Z(b,b,d)
+        S(d,e)
+        S(f,a)
+        M(a,c,a)
+        M(c,b,e)
+        A(e,a,c)
+        Z(a,a,c)
+        S(b,a)
+        Z(c,d,f)
+        M(a,c,_121665)
+        A(a,a,d)
+        M(c,c,a)
+        M(a,d,f)
+        M(d,b,u)
+        S(b,e)
+        cswap(a, b, r)
+        cswap(c, d, r)
+    end for
+    I(c, c)
+    M(a, a, c)
+    minicrypt.Field25519.freeze(q, a)
 end function
 
 end function //-------------

@@ -189,6 +189,95 @@ end function
 TEST "CURVE25519 - Field", @test_field
 
 
+// ---- helpers for test_curve -------------------------------------------------
+// Hex strings are little-endian byte strings, exactly as written in RFC 7748.
+// 64 hex chars (32 bytes) <-> 16 limbs of 16 bits; limb j = byte[2j] + 256 * byte[2j+1].
+hexToLimbs = function(hexString)
+    digits = "0123456789abcdef"
+    limbs = []
+    for j in range(0, 15)
+        lo = digits.indexOf(hexString[4*j]) * 16 + digits.indexOf(hexString[4*j + 1])
+        hi = digits.indexOf(hexString[4*j + 2]) * 16 + digits.indexOf(hexString[4*j + 3])
+        limbs.push lo + hi * 256
+    end for
+    return limbs
+end function
+
+limbsToHex = function(limbs)
+    digits = "0123456789abcdef"
+    result = ""
+    for limb in limbs
+        lo = limb % 256
+        hi = (limb - lo) / 256
+        result = result + digits[(lo - lo % 16) / 16] + digits[lo % 16]
+        result = result + digits[(hi - hi % 16) / 16] + digits[hi % 16]
+    end for
+    return result
+end function
+
+// X25519(scalar, u) on hex strings.
+x25519Hex = function(scalarHex, uHex)
+    q = [7] * 32
+    Field25519.scalarMult(q, hexToLimbs(scalarHex), hexToLimbs(uHex))
+    return limbsToHex(q[:16])
+end function
+
+// Test vectors: RFC 7748 (sections 5.2 and 6.1). Each was also checked against an
+// independent bigint implementation of the RFC ladder and against the Python
+// "cryptography" library (OpenSSL X25519).
+test_curve = function
+    basePoint = "09" + "00" * 31
+
+    // Helper sanity: round trip
+    hex = "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4"
+    expectEqual(limbsToHex(hexToLimbs(hex)), hex, "hex <-> limbs round trip")
+    expectEqual(hexToLimbs(basePoint), [9] + [0] * 15, "u = 9 as limbs")
+
+    // RFC 7748 section 5.2, first test vector
+    expectEqual(x25519Hex(
+        "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4",
+        "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c"),
+        "c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552",
+        "RFC 7748 5.2 vector 1")
+
+    // RFC 7748 section 5.2, second test vector.
+    // The u-coordinate's top bit (bit 255) is set, and X25519 must ignore it.
+    expectEqual(x25519Hex(
+        "4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d",
+        "e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493"),
+        "95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957",
+        "RFC 7748 5.2 vector 2 (u-coordinate with bit 255 set)")
+
+    // RFC 7748 section 5.2, iterated test, after 1 iteration (k = u = 9).
+    // The 1,000 and 1,000,000 iteration results are skipped: far too many scalar multiplications.
+    expectEqual(x25519Hex(basePoint, basePoint),
+        "422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079",
+        "RFC 7748 5.2 iterated, 1 iteration")
+
+    // RFC 7748 section 6.1, Diffie-Hellman
+    alicePrivate = "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a"
+    alicePublic = "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a"
+    bobPrivate = "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb"
+    bobPublic = "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f"
+    shared = "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"
+
+    expectEqual(x25519Hex(alicePrivate, basePoint), alicePublic, "Alice's public key")
+    expectEqual(x25519Hex(bobPrivate, basePoint), bobPublic, "Bob's public key")
+    expectEqual(x25519Hex(alicePrivate, bobPublic), shared, "shared secret (Alice's side)")
+    expectEqual(x25519Hex(bobPrivate, alicePublic), shared, "shared secret (Bob's side)")
+
+    // scalarMult must not modify its inputs
+    n = hexToLimbs(alicePrivate)
+    p = hexToLimbs(bobPublic)
+    q = [7] * 32
+    Field25519.scalarMult(q, n, p)
+    expectEqual(n, hexToLimbs(alicePrivate), "scalarMult leaves the scalar unchanged")
+    expectEqual(p, hexToLimbs(bobPublic), "scalarMult leaves the point unchanged")
+    expectEqual(q[16:], [7] * 16, "scalarMult only writes q[0..15]")
+end function
+TEST "CURVE25519 - Curve", @test_curve
+
+
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS
     print "<color=green>Done!"

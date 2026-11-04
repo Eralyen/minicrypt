@@ -1,6 +1,8 @@
 # minicrypt
 minicrypt is a cryptography library written in [MiniScript](https://miniscript.org/) 1.5.1 that aims to deliver secure, fast, and user-friendly algorithms to Grey Hack players, and hopefully the MiniScript community at large.
 
+Please note that this repo is currently under development and new updates may break previous code. I am currently working on a major rewrite to address some usability issues.
+
 ## Getting Started
 Visit the [Wiki](https://github.com/Eralyen/minicrypt/wiki), or browse the [examples](https://github.com/Eralyen/minicrypt/tree/main/examples).
 
@@ -18,6 +20,9 @@ Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focu
 - ChaCha: a stream cypher that should be much faster than AES in Greyscript and MiniScript applications.
 - ChaCha20-Poly1305: an AEAD algorithm that provides authentication and additional authenticated data in plaintext.
 
+### Public Key Encryption (WIP)
+- X25519: fast DH key exchange using Curve25519.
+
 ### Hashing and key derivation
 - BLAKE3: a fast, cryptographically secure hashing algorithm that supports generic hashing, keyed hashing, and key derivation.
 
@@ -28,7 +33,6 @@ Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focu
 ## Planned
 ### Public-key cryptography
 - Ed25519 (signing)
-- X25519 (encryption)
 
 ### Under consideration
 - A PBKDF such as Argon2 or Balloon hashing

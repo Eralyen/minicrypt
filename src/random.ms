@@ -12,7 +12,6 @@ minicrypt.Random.seed = null
 
 minicrypt.Random.harvestEntropy = function(timeout = 1)
     start = time
-    min_sample = 1000
     bits = 128
     counter = {}
     sample = []
@@ -31,20 +30,18 @@ minicrypt.Random.harvestEntropy = function(timeout = 1)
         end for
         mode_ctr = 0
         mode_i = 0
-        if sample.len >= min_sample then
-            // Find index of the mode
-            for i in counter.indexes
-                val = counter[i]
-                if val > mode_ctr then
-                    mode_i = i
-                    mode_ctr = val
-                end if
-            end for
-            // (cryptographers pls avert your eyes)
-            // Sample amount - sample mode = good enough entropy guesstimate
-            entropy = sample.len - mode_ctr
-            if entropy >= bits then break
-        end if
+        // Find index of the mode
+        for i in counter.indexes
+            val = counter[i]
+            if val > mode_ctr then
+                mode_i = i
+                mode_ctr = val
+            end if
+        end for
+        // (cryptographers pls avert your eyes)
+        // Sample amount - sample mode = good enough entropy guesstimate
+        entropy = sample.len - mode_ctr
+        if entropy >= bits then break
     end while
     hash_state = minicrypt.BLAKE3.startHash
     minicrypt.BLAKE3.updateHash(hash_state, sample, sample.len * 4)

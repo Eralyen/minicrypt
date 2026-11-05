@@ -4,13 +4,15 @@
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 __scope = function //-------------
+locals.minicrypt = minicrypt
 
 minicrypt.X25519 = {}
-minicrypt.X25519.P = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
-minicrypt.X25519.B = [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minicrypt.X25519.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648]
+X25519 = minicrypt.X25519
+X25519.P = [65517, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 32767]
+X25519.G = [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+X25519.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648]
 
-minicrypt.X25519.mul = function(w, u, v)
+X25519.mul = function(w, u, v)
     b0 = v[0]
     b1 = v[1]
     b2 = v[2]
@@ -462,7 +464,7 @@ minicrypt.X25519.mul = function(w, u, v)
     w[15] = t15
 end function
 
-minicrypt.X25519.square = function(w, u)
+X25519.square = function(w, u)
     a0 = u[0]
     a1 = u[1]
     a2 = u[2]
@@ -794,7 +796,7 @@ minicrypt.X25519.square = function(w, u)
 end function
 
 // Note: this does not perform coefficient reduction
-minicrypt.X25519.add = function(w, u, v)
+X25519.add = function(w, u, v)
     w[0]  = u[0]  + v[0]
     w[1]  = u[1]  + v[1]
     w[2]  = u[2]  + v[2]
@@ -814,7 +816,7 @@ minicrypt.X25519.add = function(w, u, v)
 end function
 
 // Note: this does not perform coefficient reduction
-minicrypt.X25519.sub = function(w, u, v)
+X25519.sub = function(w, u, v)
     w[0]  = u[0]  - v[0]
     w[1]  = u[1]  - v[1]
     w[2]  = u[2]  - v[2]
@@ -833,7 +835,7 @@ minicrypt.X25519.sub = function(w, u, v)
     w[15] = u[15] - v[15]
 end function
 
-minicrypt.X25519.freeze = function(w, u)
+X25519.freeze = function(w, u)
     t0 = u[0]
     t1 = u[1]
     t2 = u[2]
@@ -1191,9 +1193,9 @@ minicrypt.X25519.freeze = function(w, u)
     w[15] = t15
 end function
 
-minicrypt.X25519.invert = function(w, i)
-    sq = @minicrypt.X25519.square
-    mul = @minicrypt.X25519.mul
+X25519.invert = function(w, i)
+    sq = @X25519.square
+    mul = @X25519.mul
     b = i[0:16]
     sq(w, b)
     mul(w, w, b)
@@ -1203,7 +1205,7 @@ minicrypt.X25519.invert = function(w, i)
     end for
 end function
 
-minicrypt.X25519.cswap = function(p, q, b)
+X25519.cswap = function(p, q, b)
     x = p[0]
     y = q[0]
     t = b * (x - y)
@@ -1287,14 +1289,14 @@ minicrypt.X25519.cswap = function(p, q, b)
 end function
 
 // Calculates Q = n * P
-minicrypt.X25519.scalarMult = function(Q, n, P)
-    POW2 = minicrypt.X25519.POW2
-    cswap = @minicrypt.X25519.cswap
-    A     = @minicrypt.X25519.add
-    Z     = @minicrypt.X25519.sub
-    M     = @minicrypt.X25519.mul
-    S     = @minicrypt.X25519.square
-    I     = @minicrypt.X25519.invert
+X25519.scalarMult = function(Q, n, P)
+    POW2 = X25519.POW2
+    cswap = @X25519.cswap
+    A     = @X25519.add
+    Z     = @X25519.sub
+    M     = @X25519.mul
+    S     = @X25519.square
+    I     = @X25519.invert
     _121665 = [56129,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
     u = P[:]
@@ -1339,7 +1341,7 @@ minicrypt.X25519.scalarMult = function(Q, n, P)
     end for
     I(c, c)
     M(a, a, c)
-    minicrypt.X25519.freeze(Q, a)
+    X25519.freeze(Q, a)
 end function
 
 end function //-------------

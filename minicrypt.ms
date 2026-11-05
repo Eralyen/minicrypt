@@ -10,33 +10,58 @@ import_code("src/utils.ms")
 
 __scope = function // START OF SCOPE
 
-Random = minicrypt.Random
-Random.init
-Error = @minicrypt.Error
 locals.minicrypt = minicrypt
+locals.X25519 = minicrypt.X25519
+locals.BLAKE3 = minicrypt.BLAKE3
+Random = minicrypt.Random
+Error = @minicrypt.Error
 
-// Random module
+minicrypt.BOX_KEYLEN = 32
+minicrypt.SECRETBOX_KEYLEN = 32
+
 minicrypt.box_keypair = function
+    KEYLEN = minicrypt.BOX_KEYLEN
+    sk = minicrypt.rand_stream(KEYLEN)[1]
+    pk = [0] * KEYLEN
+    // 1073741824 = 2^30. Discards top 2 bits and set the second highest bit
+    sk[-1] = sk[-1] % 1073741824 + 1073741824
+    // Discards bottom 3 bits
+    sk[0] = sk[0] - sk[0] % 8
+    sk_16 = []
+    pk_16 = [0] * KEYLEN * 2
+    for w in sk
+        low = w % 65536
+        sk_16 = sk_16 + [low, (w-low) / 65536]
+    end for
+    X25519.scalarMult(pk_16, sk_16, X25519.G)
+    for i in range(0, KEYLEN-1)
+        pk[i] = pk_16[i*2] + pk_16[i*2+1] * 65536
+    end for
+    return [[KEYLEN, pk], [KEYLEN, sk]]
 end function
+
 minicrypt.sign_keypair = function
+    exit("<color=red>NOT IMPLEMENTED")
 end function
+
 minicrypt.secretbox_key = function
+    return minicrypt.rand_stream(minicrypt.SECRETBOX_KEYLEN)
 end function
 
-// BLAKE3 key derivation function
-minicrypt.box_subkeys = function(privkey, context)
-end function
+// TODO: BLAKE3 key derivation function
 
-// X25519 key blinding
-minicrypt.box_keypair_blind = function(privkey, blind)
-end function
+// TODO: X25519 key blinding
 
-// Ed25519 key blinding
-minicrypt.sign_keypair_blind = function(privkey, blind)
-end function
+// TODO: Ed25519 key blinding
 
 // BLAKE3 key derivation
 minicrypt.secretbox_subkey = function(key, context)
+    KEYLEN = minicrypt.SECRETBOX_KEYLEN
+    if key[0] != KEYLEN then return Error("minicrypt.secretbox_subkey", "invalid_master_key")
+    hs = BLAKE3.startDeriveKey(context[1], context[0])
+    BLAKE3.updateHash(hs, key[1], key[0])
+    subkey = BLAKE3.finalizeHash(hs)
+    return [KEYLEN, subkey]
 end function
 
 
@@ -93,7 +118,7 @@ end function
 // ==== HASHING AND CSPRNG ====
 
 // BLAKE3 hash
-minicrypt.hash = function(message)
+minicrypt.hash = function(message, out_len = 32)
 end function
 
 // Returns a random floating point number in [0, 1)
@@ -128,18 +153,19 @@ minicrypt.randrange = function(a, b)
     return minicrypt.rand_int53 % (b - a) + a
 end function
 
-// Returns 'bytes' random bytes as a list of 32-bit integers.
-// @param {number} bytes
+// Returns 'out_len' random bytes as a list of 32-bit integers.
+// @param {number} out_len
 // @returns {list<number>}
-minicrypt.rand_stream = function(bytes)
-    if bytes < 1 then return []
+minicrypt.rand_stream = function(out_len)
+    if out_len < 1 then return [0, []]
     p = [4294967296, 256, 65536, 16777216]
-    r = bytes % 4
-    // Get ceil(bytes/4) random words
-    w = Random.getRandomWords((bytes - r)/4 + (r > 0))
-    // Trim the last word if bytes is not a multiple of 4
+    r = out_len % 4
+    w = (out_len - r) / 4
+    // Get ceil(out_len/4) random words
+    w = Random.getRandomWords(w + (r > 0))
+    // Trim the last word if out_len is not a multiple of 4
     w[-1] = w[-1] % p[r]
-    return w
+    return [out_len, w]
 end function
 
 // Halts execution for the specified amount of time (default 1 second). Uses this time to harvest entropy and pregenerate a random stream. Configurable through minicrypt.Random.MAX_PREGEN_ENTROPY and minicrypt.Random.MAX_PREGEN_STREAM

@@ -18,6 +18,7 @@ Error = @minicrypt.Error
 
 minicrypt.BOX_KEYLEN = 32
 minicrypt.SECRETBOX_KEYLEN = 32
+minicrypt.AUTH_KEYLEN = 32
 
 minicrypt.box_keypair = function
     KEYLEN = minicrypt.BOX_KEYLEN
@@ -57,7 +58,6 @@ end function
 // BLAKE3 key derivation
 minicrypt.secretbox_subkey = function(key, context)
     KEYLEN = minicrypt.SECRETBOX_KEYLEN
-    if key[0] != KEYLEN then return Error("minicrypt.secretbox_subkey", "invalid_master_key")
     hs = BLAKE3.startDeriveKey(context[1], context[0])
     BLAKE3.updateHash(hs, key[1], key[0])
     subkey = BLAKE3.finalizeHash(hs)
@@ -105,8 +105,15 @@ end function
 
 // BLAKE3 authentication (keyed hash)
 minicrypt.auth = function(message, key)
+    hs = BLAKE3.startKeyedHash(key)
+    BLAKE3.updateHash(hs, message[1], message[0])
+    return [minicrypt.AUTH_KEYLEN, BLAKE3.finalizeHash(hs)]
 end function
+
 minicrypt.auth_verify = function(auth, message, key)
+    hs = BLAKE3.startKeyedHash(key)
+    BLAKE3.updateHash(hs, message[1], message[0])
+    return [minicrypt.AUTH_KEYLEN, BLAKE3.finalizeHash(hs)] == auth
 end function
 
 // Poly1305 one-time authentication
@@ -119,6 +126,15 @@ end function
 
 // BLAKE3 hash
 minicrypt.hash = function(message, out_len = 32)
+    if out_len < 1 then return [0, []]
+    p = [4294967296, 256, 65536, 16777216]
+    r = out_len % 4
+    w = (out_len - r) / 4
+    hs = BLAKE3.startHash
+    BLAKE3.updateHash(hs, message[1], message[0])
+    hash = BLAKE3.finalizeHash(hs, w + (r > 0))
+    hash[-1] = hash[-1] % p[r]
+    return [out_len, hash]
 end function
 
 // Returns a random floating point number in [0, 1)

@@ -10,10 +10,15 @@ import_code("./math.ms")
 import_code("./error.ms")
 
 __scope = function //-------------
+locals.minicrypt = minicrypt
+locals.Encode = minicrypt.Encode
+locals.Math = minicrypt.Math
+locals.Error = @minicrypt.Error
 
 minicrypt.BLAKE3 = {}
+locals.BLAKE3 = minicrypt.BLAKE3
 
-minicrypt.BLAKE3.IV = [
+BLAKE3.IV = [
     1779033703,
     3144134277,
     1013904242,
@@ -43,7 +48,7 @@ POW256 = [1, 256, 65536, 16777216, 4294967296]
 // @param {number} x - a 32-bit integer
 // @param {number} y - a 32-bit integer
 // @returns {null}
-minicrypt.BLAKE3.G = function(v, a, b, c, d, x, y)
+BLAKE3.G = function(v, a, b, c, d, x, y)
     v[a] = (v[a] + v[b] + x) % 4294967296
     v[d] = rotr(xor32(v[d], v[a]), 16)
     v[c] = (v[c] + v[d])     % 4294967296
@@ -54,9 +59,9 @@ minicrypt.BLAKE3.G = function(v, a, b, c, d, x, y)
     v[b] = rotr(xor32(v[b], v[c]), 7)
 end function
 
-G = @minicrypt.BLAKE3.G
-xor32 = @minicrypt.Math.xor32
-rotr = @minicrypt.Math.rotr
+G = @BLAKE3.G
+xor32 = @Math.xor32
+rotr = @Math.rotr
 
 // BLAKE3's compression function. Returns the untruncated state.
 // @param {list<number>} h     - the input chaining value, a list of 8 32-bit integers
@@ -65,8 +70,8 @@ rotr = @minicrypt.Math.rotr
 // @param {number}       b     - the number of input bytes, 32-bit
 // @param {number} d           - a set of domain separation bit flags
 // @returns {list<number>}     - a list of 16 32-bit integers
-minicrypt.BLAKE3.compress = function(h, m, t, b, d)
-    v = h[:] + minicrypt.BLAKE3.IV[:4] + t + [b, d]
+BLAKE3.compress = function(h, m, t, b, d)
+    v = h[:] + BLAKE3.IV[:4] + t + [b, d]
     for i in [0,1,2,3,4,5]
         G(v, 0, 4,  8, 12, m[ 0], m[ 1])
         G(v, 1, 5,  9, 13, m[ 2], m[ 3])
@@ -101,13 +106,13 @@ end function
 // @param{list} output      - the chaining state before compression
 // @param{number} [out_len] - (optional) the amount of words to return. 
 // @returns {list<number>}  - The hash, a list of 32-bit integers
-minicrypt.BLAKE3.rootOutputBytes = function(output, out_len = 16)
+BLAKE3.rootOutputBytes = function(output, out_len = 16)
     if out_len == 0 then return []
     output_block_counter = [0, 0]
     out_block = []
     flags = output[4] + ROOT
     for i in range(0, out_len-1, 16)
-        words = minicrypt.BLAKE3.compress(output[0], output[1], output_block_counter, output[3], flags)
+        words = BLAKE3.compress(output[0], output[1], output_block_counter, output[3], flags)
         out_block = out_block + words
         output_block_counter[1] = output_block_counter[1] + ((output_block_counter[0]+1) - ((output_block_counter[0]+1) % 4294967296)) / 4294967296
         output_block_counter[0] = (output_block_counter[0]+1) % 4294967296
@@ -126,7 +131,7 @@ end function
 // @param {list<number>} key            - the key or IV. A list of 32-bit integers
 // @param {number} flags                - a set of domain separation bit flags
 // @returns {list}                      - the chaining state before compression
-minicrypt.BLAKE3.parentOutput = function(left_child_cv, right_child_cv, key, flags)
+BLAKE3.parentOutput = function(left_child_cv, right_child_cv, key, flags)
     flags = flags + PARENT
     return [key, left_child_cv + right_child_cv, [0, 0], 64, flags]
 end function
@@ -137,9 +142,9 @@ end function
 // @param {list<number>} key            - the key or IV. A list of 32-bit integers
 // @param {number} flags                - a set of domain separation bit flags
 // @returns {list<number>}              - the chaining value of the parent
-minicrypt.BLAKE3.parentCV = function(left_child_cv, right_child_cv, key, flags)
-    output = minicrypt.BLAKE3.parentOutput(left_child_cv, right_child_cv, key, flags)
-    return minicrypt.BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8]
+BLAKE3.parentCV = function(left_child_cv, right_child_cv, key, flags)
+    output = BLAKE3.parentOutput(left_child_cv, right_child_cv, key, flags)
+    return BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8]
 end function
 
 // Returns the state for a new chunk: [chaining_value, chunk_counter, block, blocks_compressed, flags, pad_bytes]
@@ -147,7 +152,7 @@ end function
 // @param {number}       counter  - the chunk counter
 // @param {number}       flags    - a set of domain separation bit flags
 // @returns {list}>
-minicrypt.BLAKE3.newChunkState = function(key, counter, flags)
+BLAKE3.newChunkState = function(key, counter, flags)
     return [key, counter, [], 0, flags, 0]
 end function
 
@@ -161,14 +166,14 @@ end function
 // @param {list}         chunk_state - a list of the chunk state, see above
 // @param {list<number>} input       - part of the input, a list of 32-bit integers
 // @returns {null}
-minicrypt.BLAKE3.updateBlock = function(chunk_state, input)
+BLAKE3.updateBlock = function(chunk_state, input)
     while input.len > 0
         // If the block buffer is full, compress it and clear it. More
         // input is coming, so this compression is not CHUNK_END.
         if chunk_state[2].len == 16 then 
             flags = chunk_state[4] // chunk_state[4] = flags
             flags = flags + CHUNK_START * (chunk_state[3] == 0) // chunk_state[3] = blocks_compressed
-            chunk_state[0] = minicrypt.BLAKE3.compress(chunk_state[0], chunk_state[2], chunk_state[1], chunk_state[2].len * 4, flags)[:8] // chunk_state[0] = chaining_value
+            chunk_state[0] = BLAKE3.compress(chunk_state[0], chunk_state[2], chunk_state[1], chunk_state[2].len * 4, flags)[:8] // chunk_state[0] = chaining_value
             chunk_state[3] = chunk_state[3] + 1 // chunk_state[3] = blocks_compressed
             chunk_state[2] = [] //chunk_state[2] = block
         end if
@@ -182,39 +187,39 @@ end function
 // Turns the last chunk state into a block output state
 // @param {list}   chunk_state - a list of the chunk state
 // @returns {list}             - a list of the output, the block state
-minicrypt.BLAKE3.outputChunks = function(chunk_state)
+BLAKE3.outputChunks = function(chunk_state)
     flags = chunk_state[4]
     flags = flags + CHUNK_START * (chunk_state[3] == 0)
     flags = flags + CHUNK_END
     return [chunk_state[0], chunk_state[2] + [0] * (16 - chunk_state[2].len), chunk_state[1], chunk_state[2].len * 4 - chunk_state[5], flags]
 end function
 
-// Returns the beginning state for an unkeyed hash. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// Returns the beginning state for an unkeyed hash. Follow it up with BLAKE3.updateHash() and then BLAKE3.finalizeHash()
 // @description hash_state[0] = chunk state
 // @description hash_state[1] = key
 // @description hash_state[2] = CV stack
 // @description hash_state[3] = flags
 // @returns {list}
-minicrypt.BLAKE3.startHash = function
-    chunk_state = minicrypt.BLAKE3.newChunkState(minicrypt.BLAKE3.IV, [0, 0], 0)
-    hash_state = [chunk_state, minicrypt.BLAKE3.IV, [], 0]
+BLAKE3.startHash = function
+    chunk_state = BLAKE3.newChunkState(BLAKE3.IV, [0, 0], 0)
+    hash_state = [chunk_state, BLAKE3.IV, [], 0]
     return hash_state
 end function
 
-// Returns the beginning state for a keyed hash. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// Returns the beginning state for a keyed hash. Follow it up with BLAKE3.updateHash() and then BLAKE3.finalizeHash()
 // @description hash_state[0] = chunk state
 // @description hash_state[1] = key
 // @description hash_state[2] = CV stack
 // @description hash_state[3] = flags
 // @param {list<number>} key - the 256-bit key. A list of 8 32-bit integers
 // @returns {list}
-minicrypt.BLAKE3.startKeyedHash = function(key)
+BLAKE3.startKeyedHash = function(key)
     flags = KEYED_HASH
-    chunk_state = minicrypt.BLAKE3.newChunkState(key, [0, 0], flags)
+    chunk_state = BLAKE3.newChunkState(key, [0, 0], flags)
     hash_state = [chunk_state, key, [], flags]
     return hash_state
 end function
-// Returns the beginning state for key derivation. Follow it up with minicrypt.BLAKE3.updateHash() and then minicrypt.BLAKE3.finalizeHash()
+// Returns the beginning state for key derivation. Follow it up with BLAKE3.updateHash() and then BLAKE3.finalizeHash()
 // @description hash_state[0] = chunk state
 // @description hash_state[1] = key
 // @description hash_state[2] = CV stack
@@ -222,13 +227,13 @@ end function
 // @param {list<number>} context  - the key context. A list of 32-bit integers
 // @param {list<number>} byte_len - the length of the context in bytes
 // @returns {list}
-minicrypt.BLAKE3.startDeriveKey = function(context, byte_len)
-    key = minicrypt.BLAKE3.IV
-    chunk_state = minicrypt.BLAKE3.newChunkState(key, [0, 0], DERIVE_KEY_CONTEXT)
+BLAKE3.startDeriveKey = function(context, byte_len)
+    key = BLAKE3.IV
+    chunk_state = BLAKE3.newChunkState(key, [0, 0], DERIVE_KEY_CONTEXT)
     hash_state = [chunk_state, key, [], DERIVE_KEY_CONTEXT]
-    minicrypt.BLAKE3.updateHash(hash_state, context, byte_len)
-    context_key = minicrypt.BLAKE3.finalizeHash(hash_state, 8)
-    chunk_state = minicrypt.BLAKE3.newChunkState(context_key, [0, 0], DERIVE_KEY_MATERIAL)
+    BLAKE3.updateHash(hash_state, context, byte_len)
+    context_key = BLAKE3.finalizeHash(hash_state, 8)
+    chunk_state = BLAKE3.newChunkState(context_key, [0, 0], DERIVE_KEY_MATERIAL)
     hash_state = [chunk_state, context_key, [], DERIVE_KEY_MATERIAL]
     return hash_state
 end function
@@ -240,20 +245,20 @@ end function
 // @param {list<number>}       key          - the key or IV. A list of 32-bit integers
 // @param {list<number>}       flags        - a set of domain separation bit flags
 // @returns {null}
-minicrypt.BLAKE3.addChunkChainingValue = function(cv_stack, new_cv, total_chunks, key, flags)
+BLAKE3.addChunkChainingValue = function(cv_stack, new_cv, total_chunks, key, flags)
     while total_chunks % 2 == 0
-        new_cv = minicrypt.BLAKE3.parentCV(cv_stack.pop, new_cv, key, flags)
+        new_cv = BLAKE3.parentCV(cv_stack.pop, new_cv, key, flags)
         total_chunks = total_chunks / 2
     end while
     cv_stack.push(new_cv)
 end function
 
-// Hashes the input. Can be called multiple times to keep adding input data. Updates the hash_state in place, follow it up with minicrypt.BLAKE3.finalizeHash()
+// Hashes the input. Can be called multiple times to keep adding input data. Updates the hash_state in place, follow it up with BLAKE3.finalizeHash()
 // @param {list}         hash_state - the hash state, a list of 4 32-bit integers
 // @param {list<number>} input      - the input, a list of 32-bit integers
 // @param {number}       byte_len   - the length of the input in bytes
 // @returns {null}
-minicrypt.BLAKE3.updateHash = function(hash_state, input, byte_len)
+BLAKE3.updateHash = function(hash_state, input, byte_len)
     if byte_len == 0 then return
     r = byte_len % 4       // valid bytes in the last input word (0 = all complete)
     n = (byte_len - r) / 4 // number of complete words
@@ -297,18 +302,18 @@ minicrypt.BLAKE3.updateHash = function(hash_state, input, byte_len)
 
     while complete.len != 0
         if (64 * hash_state[0][3]) + (4 * hash_state[0][2].len) == 1024 then
-            chunk_output = minicrypt.BLAKE3.outputChunks(hash_state[0])
-            chunk_cv = minicrypt.BLAKE3.compress(chunk_output[0], chunk_output[1], chunk_output[2], chunk_output[3], chunk_output[4])[:8]
+            chunk_output = BLAKE3.outputChunks(hash_state[0])
+            chunk_cv = BLAKE3.compress(chunk_output[0], chunk_output[1], chunk_output[2], chunk_output[3], chunk_output[4])[:8]
             counter = hash_state[0][1] // [low, high]
             total_chunks = counter[0] + counter[1] * 4294967296 + 1
-            minicrypt.BLAKE3.addChunkChainingValue(hash_state[2], chunk_cv, total_chunks, hash_state[1], hash_state[3])
+            BLAKE3.addChunkChainingValue(hash_state[2], chunk_cv, total_chunks, hash_state[1], hash_state[3])
             low = total_chunks % 4294967296
             high = (total_chunks - low) / 4294967296
-            hash_state[0] = minicrypt.BLAKE3.newChunkState(hash_state[1], [low, high], hash_state[3])
+            hash_state[0] = BLAKE3.newChunkState(hash_state[1], [low, high], hash_state[3])
         end if
         want = 256 - (16 * hash_state[0][3]) - hash_state[0][2].len
         new_slice = complete[:want]
-        minicrypt.BLAKE3.updateBlock(hash_state[0], new_slice)
+        BLAKE3.updateBlock(hash_state[0], new_slice)
         complete = complete[want:]
     end while
     hash_state[0][5] = pad
@@ -318,47 +323,47 @@ end function
 // @param {list}   hash_state - the hash state, a list of 4 32-bit integers
 // @param {number} [out_len]  - (optional) the desired length of the output in words. If you need to a byte length that's not a multiple of 4, truncate it.
 // @returns{list<number>}     - the output hash, a list of out_len 32-bit 
-minicrypt.BLAKE3.finalizeHash = function(hash_state, out_len = 8)
+BLAKE3.finalizeHash = function(hash_state, out_len = 8)
     // Starting with the Output from the current chunk, compute all the
     // parent chaining values along the right edge of the tree, until we
     // have the root Output.
-    output = minicrypt.BLAKE3.outputChunks(hash_state[0])
+    output = BLAKE3.outputChunks(hash_state[0])
     parent_nodes_remaining = hash_state[2].len
     while parent_nodes_remaining > 0
         parent_nodes_remaining = parent_nodes_remaining - 1
-        output = minicrypt.BLAKE3.parentOutput(
+        output = BLAKE3.parentOutput(
             hash_state[2][parent_nodes_remaining],
-            minicrypt.BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8],
+            BLAKE3.compress(output[0], output[1], output[2], output[3], output[4])[:8],
             hash_state[1],
             hash_state[3]) // flag
     end while
-    output_hash = minicrypt.BLAKE3.rootOutputBytes(output, out_len)
+    output_hash = BLAKE3.rootOutputBytes(output, out_len)
     return output_hash
 end function
 
 // Returns a Hasher object, useful for hashing multiple strings together, even with different encodings. Also useful for hashing data that is too large to fit in a single variable.
 // @returns {Hasher}
-// @example hasher = minicrypt.BLAKE3.getHasher
+// @example hasher = BLAKE3.getHasher
 // @example hasher.update(file1_content)
 // @example hasher.update(file2_content)
 // @example hash = hasher.finalize
-minicrypt.BLAKE3.getHasher = function
+BLAKE3.getHasher = function
     hasher = {"classID": "Hasher"}
-    hasher.hash_state = minicrypt.BLAKE3.startHash
+    hasher.hash_state = BLAKE3.startHash
 
     // Adds input to the hasher and compresses it.
     // @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
     // @param {string} [input_encoding] - (optional) format to encode the input string with
     // @returns {true | error}
     hasher.update = function(input, input_encoding = "16bit")
-        ie = minicrypt.Encode.getEncoding(input_encoding)
-        if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+        ie = Encode.getEncoding(input_encoding)
+        if ie == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
         encode = ie[0]
         res = encode(input)
         if typeof(res) == "error" then return res
         input_raw = res[0]
         input_len = res[1]
-        minicrypt.BLAKE3.updateHash(self.hash_state, input_raw, input_len)
+        BLAKE3.updateHash(self.hash_state, input_raw, input_len)
         return true
     end function
 
@@ -366,10 +371,10 @@ minicrypt.BLAKE3.getHasher = function
     // @param {number} [out_byte_len]   - (optional) byte length of the output hash
     // @param {string} [hash_encoding]  - (optional) format to encode the output hash with
     hasher.finalize = function(out_byte_len = 32, hash_encoding = "hex")
-        he = minicrypt.Encode.getEncoding(hash_encoding)
-        if he == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+        he = Encode.getEncoding(hash_encoding)
+        if he == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
         decode = he[1]
-        hash_raw = minicrypt.BLAKE3.finalizeHash(self.hash_state, ceil(out_byte_len/4))
+        hash_raw = BLAKE3.finalizeHash(self.hash_state, ceil(out_byte_len/4))
         hash = decode(hash_raw, out_byte_len)
         return hash
     end function
@@ -382,37 +387,37 @@ end function
 // @param {string} key              - the secret key. By default a hex string, 32 bytes / 64 characters
 // @param {string} [key_encoding]   - (optional) format to encode the secret key with
 // @returns {KeyedHasher | error}
-// @example keyed_hasher = minicrypt.BLAKE3.getKeyedHasher("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
+// @example keyed_hasher = BLAKE3.getKeyedHasher("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
 // @example keyed_hasher.update(file1_content)
 // @example keyed_hasher.update(file2_content)
 // @example hash = keyed_hasher.finalize
-minicrypt.BLAKE3.getKeyedHasher = function(key, key_encoding = "hex")
+BLAKE3.getKeyedHasher = function(key, key_encoding = "hex")
     keyed_hasher = {"classID": "KeyedHasher"}
     
-    ke = minicrypt.Encode.getEncoding(key_encoding)
-    if ke == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    ke = Encode.getEncoding(key_encoding)
+    if ke == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
     key_encode = ke[0]
     res = key_encode(key)
     if typeof(res) == "error" then return res
     key_raw = res[0]
     key_len = res[1]
-    if key_len != 32 then return minicrypt.Error("minicrypt.BLAKE3.keyedHash", "invalid_key_length")
+    if key_len != 32 then return Error("minicrypt.BLAKE3.keyedHash", "invalid_key_length")
 
-    keyed_hasher.hash_state = minicrypt.BLAKE3.startKeyedHash(key_raw)
+    keyed_hasher.hash_state = BLAKE3.startKeyedHash(key_raw)
 
     // Adds input to the hasher and compresses it.
     // @param {string} input            - text to hash. By default, it supports the entire range of characters, char(0)-char(65535)
     // @param {string} [input_encoding] - (optional) format to encode the input string with
     // @returns {true | error}
     keyed_hasher.update = function(input, input_encoding = "16bit")
-        ie = minicrypt.Encode.getEncoding(input_encoding)
-        if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+        ie = Encode.getEncoding(input_encoding)
+        if ie == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
         encode = ie[0]
         res = encode(input)
         if typeof(res) == "error" then return res
         input_raw = res[0]
         input_len = res[1]
-        minicrypt.BLAKE3.updateHash(self.hash_state, input_raw, input_len)
+        BLAKE3.updateHash(self.hash_state, input_raw, input_len)
         return true
     end function
 
@@ -420,10 +425,10 @@ minicrypt.BLAKE3.getKeyedHasher = function(key, key_encoding = "hex")
     // @param {number} [out_byte_len]   - (optional) byte length of the output hash
     // @param {string} [hash_encoding]  - (optional) format to encode the output hash with
     keyed_hasher.finalize = function(out_byte_len = 32, hash_encoding = "hex")
-        he = minicrypt.Encode.getEncoding(hash_encoding)
-        if he == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+        he = Encode.getEncoding(hash_encoding)
+        if he == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
         decode = he[1]
-        hash_raw = minicrypt.BLAKE3.finalizeHash(self.hash_state, ceil(out_byte_len/4))
+        hash_raw = BLAKE3.finalizeHash(self.hash_state, ceil(out_byte_len/4))
         hash = decode(hash_raw, out_byte_len)
         return hash
     end function
@@ -437,9 +442,9 @@ end function
 // @param {string} [input_encoding] - (optional) format to encode the input string with
 // @param {string} [hash_encoding]  - (optional) format to encode the output hash with
 // @returns {string | error}        - the hash
-// @example minicrypt.BLAKE3.hash("Hello BLAKE3!")
-minicrypt.BLAKE3.hash = function(input, out_byte_len = 32, input_encoding = "16bit", hash_encoding = "hex")
-    hasher = minicrypt.BLAKE3.getHasher
+// @example BLAKE3.hash("Hello BLAKE3!")
+BLAKE3.hash = function(input, out_byte_len = 32, input_encoding = "16bit", hash_encoding = "hex")
+    hasher = BLAKE3.getHasher
     res = hasher.update(input, input_encoding)
     if typeof(res) == "error" then return res
     return hasher.finalize(out_byte_len, hash_encoding)
@@ -453,9 +458,9 @@ end function
 // @param {string} [key_encoding]   - (optional) format to encode the secret key with
 // @param {string} [hash_encoding]  - (optional) format to encode the output hash with
 // @returns {string | error}        - the hash
-// @example minicrypt.BLAKE3.keyedHash("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "Hello BLAKE3!")
-minicrypt.BLAKE3.keyedHash = function(key, input, out_byte_len = 32, input_encoding = "16bit", key_encoding = "hex", hash_encoding = "hex")
-    keyed_hasher = minicrypt.BLAKE3.getKeyedHasher(key, key_encoding)
+// @example BLAKE3.keyedHash("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "Hello BLAKE3!")
+BLAKE3.keyedHash = function(key, input, out_byte_len = 32, input_encoding = "16bit", key_encoding = "hex", hash_encoding = "hex")
+    keyed_hasher = BLAKE3.getKeyedHasher(key, key_encoding)
     res = keyed_hasher.update(input, input_encoding)
     if typeof(res) == "error" then return res
     return keyed_hasher.finalize(out_byte_len, hash_encoding)
@@ -469,18 +474,18 @@ end function
 // @param {string} [context_encoding] - (optional) format to encode the context string with
 // @param {string} [output_encoding]  - (optional) format to encode the output key with
 // @returns {string | error}          - the new key
-// @example minicrypt.BLAKE3.deriveKey("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "file encryption key for MyCoolApp 2026-10-22 12:53:16")
-minicrypt.BLAKE3.deriveKey = function(input, context, out_byte_len = 32, input_encoding = "hex", context_encoding = "8bit", output_encoding = "hex")
-    ie = minicrypt.Encode.getEncoding(input_encoding)
-    if ie == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+// @example BLAKE3.deriveKey("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c", "file encryption key for MyCoolApp 2026-10-22 12:53:16")
+BLAKE3.deriveKey = function(input, context, out_byte_len = 32, input_encoding = "hex", context_encoding = "8bit", output_encoding = "hex")
+    ie = Encode.getEncoding(input_encoding)
+    if ie == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
     encode = ie[0]
 
-    ce = minicrypt.Encode.getEncoding(context_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    ce = Encode.getEncoding(context_encoding)
+    if ce == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
     context_encode = ce[0]
 
-    oe = minicrypt.Encode.getEncoding(output_encoding)
-    if oe == null then return minicrypt.Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
+    oe = Encode.getEncoding(output_encoding)
+    if oe == null then return Error("minicrypt.BLAKE3.hash", "unsupported_encoding")
     decode = oe[1]
 
     res = encode(input)
@@ -493,9 +498,9 @@ minicrypt.BLAKE3.deriveKey = function(input, context, out_byte_len = 32, input_e
     context_raw = res[0]
     context_len = res[1]
 
-    hash_state = minicrypt.BLAKE3.startDeriveKey(context_raw, context_len)
-    minicrypt.BLAKE3.updateHash(hash_state, input_raw, input_len)
-    key_raw = minicrypt.BLAKE3.finalizeHash(hash_state, ceil(out_byte_len/4))
+    hash_state = BLAKE3.startDeriveKey(context_raw, context_len)
+    BLAKE3.updateHash(hash_state, input_raw, input_len)
+    key_raw = BLAKE3.finalizeHash(hash_state, ceil(out_byte_len/4))
 
     key = decode(key_raw, out_byte_len)
     return key
@@ -503,5 +508,5 @@ end function
 
 end function //-------------
 
-if not minicrypt.hasIndex("BLAKE3") then __scope()
+if not minicrypt.hasIndex("minicrypt.BLAKE3") then __scope()
 globals.remove("__scope")

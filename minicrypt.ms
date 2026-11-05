@@ -8,6 +8,13 @@ import_code("src/utils.ms")
 
 // ==== KEY GENERATION ====
 
+__scope = function // START OF SCOPE
+
+Random = minicrypt.Random
+Random.init
+Error = @minicrypt.Error
+locals.minicrypt = minicrypt
+
 // Random module
 minicrypt.box_keypair = function
 end function
@@ -89,17 +96,73 @@ end function
 minicrypt.hash = function(message)
 end function
 
-// Random module
-minicrypt.rand_double = function
+// Returns a random floating point number in [0, 1)
+// @returns {number}
+minicrypt.random = function
+    w = Random.getRandomWords(2)
+    return ((w[1] % 2097152) + (w[0] / 4294967296)) / 2097152
 end function
+
+// Returns a random integer in [0, 4294967296)
+// @returns {number}
 minicrypt.rand_int32 = function
+    return Random.getRandomWords(1)[0]
 end function
+
+// Returns a random integer in [0, 9007199254740992)
+// @returns {number}
 minicrypt.rand_int53 = function
+    w = Random.getRandomWords(2)
+    return (w[1] % 2097152) * 4294967296 + w[0]
 end function
+
+// Returns a random integer in [a, b)
+// @param {number} a
+// @param {number} b
+// @returns {number}
 minicrypt.randrange = function(a, b)
+    // Constant time swap: if a > b then swap a and b
+    t = (a > b) * (a - b)
+    a = a - t
+    b = b + t 
+    return minicrypt.rand_int53 % (b - a) + a
 end function
+
+// Returns 'bytes' random bytes as a list of 32-bit integers.
+// @param {number} bytes
+// @returns {list<number>}
 minicrypt.rand_stream = function(bytes)
+    if bytes < 1 then return []
+    p = [4294967296, 256, 65536, 16777216]
+    r = bytes % 4
+    // Get ceil(bytes/4) random words
+    w = Random.getRandomWords((bytes - r)/4 + (r > 0))
+    // Trim the last word if bytes is not a multiple of 4
+    w[-1] = w[-1] % p[r]
+    return w
 end function
+
+// Halts execution for the specified amount of time (default 1 second). Uses this time to harvest entropy and pregenerate a random stream. Configurable through minicrypt.Random.MAX_PREGEN_ENTROPY and minicrypt.Random.MAX_PREGEN_STREAM
+// Not as precise as the wait intrinsic.
+// @param {number} [seconds] - (optional) How long to wait in seconds. Can be a floating point number
+// @returns {null}
+minicrypt.wait = function(seconds = 1)
+    t = time
+    if Random.samples_entropy < Random.MAX_PREGEN_ENTROPY then
+        Random.harvestEntropy(Random.MAX_PREGEN_ENTROPY, seconds)
+    end if
+    if time - t < seconds and Random.output.len < Random.MAX_PREGEN_STREAM then
+        while time - t < seconds and Random.output.len < Random.MAX_PREGEN_STREAM
+            Random.pregenWords
+        end while
+    end if
+    t2 = time
+    if t2 - t < seconds then wait(seconds - (t2-t))
+end function
+
+end function // END OF SCOPE
+__scope()
+globals.remove("__scope")
 
 
 // ==== EXAMPLE USAGE ====

@@ -348,6 +348,9 @@ end function
 // @example hasher.update(file2_content)
 // @example hash = hasher.finalize
 BLAKE3.getHasher = function
+    BLAKE3 = outer.BLAKE3
+    Encode = outer.Encode
+
     hasher = {"classID": "Hasher"}
     hasher.hash_state = BLAKE3.startHash
 
@@ -392,6 +395,8 @@ end function
 // @example keyed_hasher.update(file2_content)
 // @example hash = keyed_hasher.finalize
 BLAKE3.getKeyedHasher = function(key, key_encoding = "hex")
+    BLAKE3 = outer.BLAKE3
+    Encode = outer.Encode
     keyed_hasher = {"classID": "KeyedHasher"}
     
     ke = Encode.getEncoding(key_encoding)

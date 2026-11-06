@@ -191,6 +191,23 @@ test_chacha8poly1305 = function
     decrypted = minicrypt.ChaCha8Poly1305.decrypt(key, nonce, chacha8_result[0])
     expectEqual(decrypted[0], aad[0], "ChaCha8-Poly1305 recovers AAD")
     expectEqual(decrypted[2], plaintext[0], "ChaCha8-Poly1305 recovers plaintext")
+
+    plaintext = minicrypt.Encode.encodeText8("x" * 131)
+    byte_count = plaintext[1]
+    counter = 1
+    key_stream = minicrypt.ChaCha.keystream(key, nonce, byte_count, counter, 8)
+    simulated_ciphertext = []
+    block_start = 0
+    while block_start < plaintext[0].len
+        block = plaintext[0][block_start:block_start+16]
+        block_key = key_stream[block_start:block_start+16]
+        encrypted_block = [0] * block.len
+        minicrypt.ChaCha.xorBlock(encrypted_block, block, block_key)
+        simulated_ciphertext = simulated_ciphertext + encrypted_block
+        block_start = block_start + 16
+    end while
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext[0], byte_count, counter, 8)
+    expectEqual(simulated_ciphertext, ciphertext, "ChaCha8 keystream matches chacha output")
 end function
 TEST "CHACHA8-POLY1305", @test_chacha8poly1305
 

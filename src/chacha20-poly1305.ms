@@ -108,6 +108,33 @@ ChaCha.assembleState = function(key, nonce, counter)
            nonce
 end function
 
+// Generates a keystream from the provided key.
+// @params {list<number>}  key        - a list of 8 32-bit integers. The secret key
+// @params {list<number>}  nonce      - a list of 3 32-bit integers. A unique value
+// @param {number}         byte_count - a 32-bit integer. The desired length of the bytestream
+// @param {number}         [counter]  - a 32-bit integer. The starting ChaCha counter, is used to ensure that (counter + nonce) is unique for each block
+// @param {number}         [rounds]   - an even number of ChaCha rounds, default 8
+// @returns {list<number>}            - a list of 32-bit integers, holding 'byte_count' bytes
+ChaCha.keystream = function(key, nonce, byte_count, counter = 1, rounds = 8)
+    if byte_count == 0 then return []
+    p = [4294967296, 256, 65536, 16777216]
+    r = byte_count % 4
+    words = (byte_count - r) / 4 + (r > 0)
+    state = ChaCha.assembleState(key, nonce, counter)
+    key_stream = []
+    ks = [0] * 16
+    i = 0
+    while i*16 < words
+        state[12] = counter + i
+        ChaCha.chachaBlock(ks, state, rounds)
+        key_stream = key_stream + ks
+        i = i + 1
+    end while
+    key_stream = key_stream[:words]
+    key_stream[-1] = key_stream[-1] % p[r]
+    return key_stream
+end function
+
 // Encrypts or decrypts an encoded message using the ChaCha algorithm.
 // @params {list<number>}  key        - a list of 8 32-bit integers. The secret key
 // @params {list<number>}  nonce      - a list of 3 32-bit integers. A unique value

@@ -10,8 +10,10 @@ import_code("src/utils.ms")
 __scope = function // START OF SCOPE
 
 locals.minicrypt = minicrypt
-locals.X25519 = minicrypt.X25519
-locals.BLAKE3 = minicrypt.BLAKE3
+X25519 = minicrypt.X25519
+BLAKE3 = minicrypt.BLAKE3
+ChaCha8 = minicrypt.ChaCha
+ChaCha8Poly1305 = minicrypt.ChaCha8Poly1305
 Random = minicrypt.Random
 Error = @minicrypt.Error
 
@@ -83,12 +85,15 @@ end function
 
 // ChaCha8-Poly1305 (Authenticated Encryption)
 minicrypt.secretbox = function(message, nonce, key)
+    // this may be fine if we just leave the aad empty
 end function
 minicrypt.secretbox_open = function(secretbox, nonce, key)
 end function
 
 // ChaCha8-Poly1305 (AEAD)
 minicrypt.secretbox_labeled = function(message, label, nonce, key)
+    // ciphertext = ChaCha8Poly1305.encrypt(key[1], nonce[1], label[1], label[0], message[1], message[0])
+    // figure out how to append the values together into a [length, value] variable because this returns [aead, tag]
 end function
 minicrypt.secretbox_labeled_read = function(secretbox)
 end function
@@ -97,9 +102,11 @@ end function
 
 // ChaCha8 keystream
 minicrypt.stream = function(bytes, nonce, key)
+    return [bytes, ChaCha8.keystream(key[1], nonce[1], bytes)]
 end function
 // ChaCha8 encryption/decryption
 minicrypt.stream_xor = function(message, nonce, key)
+    return [message[0], ChaCha8.chacha(key[1], nonce[1], message[1], message[0])]
 end function
 
 // BLAKE3 authentication (keyed hash)

@@ -8,7 +8,6 @@
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 import_code("./blake3.ms")
-import_code("./bigint.ms")
 import_code("./math.ms")
 import_code("./encode.ms")
 import_code("./error.ms")
@@ -16,8 +15,6 @@ import_code("./error.ms")
 __scope = function //-------------
 
 minicrypt.Poly1305 = {}
-minicrypt.Poly1305.BigInt = new minicrypt.BigInt
-minicrypt.Poly1305.BigInt.init(156, 26)
 
 minicrypt.ChaCha = {}
 
@@ -238,15 +235,15 @@ minicrypt.ChaCha20.ROUNDS = 20
 minicrypt.ChaCha8 = new minicrypt.ChaCha
 minicrypt.ChaCha8.ROUNDS = 8
 
-// Clamps the "r" value in Poly1305.macRaw by editing it in place. Also returns the clamped value.
-// @param {list<number>}   r - a list of 4 32-bit integers
-// @returns {list<number>}   - clamped value
-minicrypt.Poly1305.clampR = function(r)
-    r[0] = r[0] % 268435456
-    r[1] = (r[1] - r[1] % 4) % 268435456
-    r[2] = (r[2] - r[2] % 4) % 268435456
-    r[3] = (r[3] - r[3] % 4) % 268435456
-    return r
+// addition of two numbers as lists of 17 bytes. the result is stored in a
+minicrypt.Poly1305.add = function(a, b)
+    u = 0
+    for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        u = u + a[i] + b[i]
+        a[i] = u % 256
+        u = (u - a[i]) / 256
+    end for
+    a[16] = (u + a[16] + b[16]) % 256
 end function
 
 // Given a secret key and an encoded message of any size, computes a 128 bit fingerprint of that message.
@@ -255,29 +252,90 @@ end function
 // @param {number}         byte_count - length of the message in bytes
 // @returns {list<number>}            - list of 4 32-bit integers
 minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
-    r = minicrypt.Poly1305.clampR(key[:4]) + [0]
-    r = minicrypt.Encode.B32toB26(r)
-    s = minicrypt.Encode.B32toB26(key[4:]) + [0]
-    a = minicrypt.Poly1305.BigInt.zero
-    p = [67108859, 67108863, 67108863, 67108863, 67108863, 0] //2^130-5
-    if msg.len > 0 then
-        for i in range(0, msg.len-1, 4)
-            n = minicrypt.Encode.B32toB26(msg[i:i+4]) + [0]
-            b = 128
-            if i + 4 >= msg.len then
-                n = n + [0] * (6 - n.len % 6)
-                b = (byte_count % 16) * 8
-                if b == 0 then b = 128
-            end if
-            bit = minicrypt.Poly1305.BigInt.pow2(b)
-            n = minicrypt.Poly1305.BigInt.add(n, bit)
-            a = minicrypt.Poly1305.BigInt.add(a, n)
-            // a = (a * r) mod p
-            a = minicrypt.Poly1305.BigInt.multP(a, r, 5, 5, p)
+    k = []
+    for i in [0,1,2,3,4,5,6,7]
+        wk = key[i]
+        newk = [0] * 4
+        for j in [0,1,2]
+            newk[j] = wk % 256
+            wk = (wk - newk[j]) / 256
+        end for
+        newk[3] = wk
+        k = k + newk
+    end for
+    r = k[:16] + [0]
+    s = k[16:] + [0]
+    // Clamp the 'r' value
+    r[3] = r[3] % 16
+    r[4] = r[4] - r[4] % 4
+    r[7] = r[7] % 16
+    r[8] = r[8] - r[8] % 4
+    r[11] = r[11] % 16
+    r[12] = r[12] - r[12] % 4
+    r[15] = r[15] % 16
+    h = [0] * 17
+    minusp = [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 252]
+    m = []
+    for w in msg
+        newm = [0] * 4
+        for j in [0,1,2]
+            newm[j] = w % 256
+            w = (w - newm[j]) / 256
+        end for
+        newm[3] = w
+        m = m + newm
+    end for
+    m = m[:byte_count]
+    if m.len > 0 then
+        x = [0] * 17
+        for mpos in range(0, m.len-1, 16)
+            c = m[mpos:mpos+16]
+            c = c + [1] + [0] * (16-c.len)
+            minicrypt.Poly1305.add(h, c)
+            for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+                x[i] = 0
+                for j in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+                    if j <= i then
+                        x[i] = x[i] + h[j] * r[i - j]
+                    else
+                        x[i] = x[i] + h[j] * (320 * r[i + 17 - j])
+                    end if
+                end for
+            end for
+            u = 0
+            for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+                u = u + x[i]
+                h[i] = u % 256
+                u = (u - h[i]) / 256
+            end for
+            u = u + x[16]
+            h[16] = u % 4;
+            u = 5 * ((u - h[16]) / 4)
+            for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+                u = u + h[i]
+                h[i] = u % 256
+                u = (u - h[i]) / 256
+            end for
+            u = u + h[16]
+            h[16] = u
         end for
     end if
-    a = minicrypt.Poly1305.BigInt.add(a, s)
-    return minicrypt.Encode.B26toB32(a)
+    g = h[:]
+    minicrypt.Poly1305.add(h, minusp)
+    s = h[16] >= 128
+    c = [0] * 17
+    for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        h[i] = h[i] + s * (g[i] - h[i])
+        c[i] = k[i + 16]
+    end for
+    h[16] = h[16] + s * (g[16] - h[16])
+    minicrypt.Poly1305.add(h, c)
+    mac = [0, 0, 0, 0]
+    for i in [0, 1, 2, 3]
+        j = i*4
+        mac[i] = h[j] + h[j+1] * 256 + h[j+2] * 65536 + h[j+3] * 16777216
+    end for
+    return mac
 end function
 
 // Given a secret key and an encoded message of any size, computes a 128 bit fingerprint of that message.

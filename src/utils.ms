@@ -1,8 +1,12 @@
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 __scope = function //-------------
+locals.minicrypt = minicrypt
+
+Encode = minicrypt.Encode
 
 minicrypt.Utils = {}
+Utils = minicrypt.Utils
 
 // Turns a base64 string into a hexdump
 // @param {string} b64 - a base64 string
@@ -20,14 +24,14 @@ minicrypt.Utils = {}
 // @example 00000080  a7 cc cb b5 36 81 d9 66  db f9 29 85 34 42 b5 1d  |§ÌËµ6.ÙfÛù).4Bµ.|
 // @example 00000090  00 00 00 00 00 00 00 00  00 00 00 00 3e 00 00 00  |............>...|
 // @example 000000a0  00 00 00 00 24 00 00 00  00 00 00 00              |....$.......|
-minicrypt.Utils.hexdump = function(b64, encoding="base64")
+Utils.hexdump = function(b64, encoding="base64")
     byteToChar = function(b)
         blacklist = range(0,31) + range(127, 159) + [173]
         if blacklist.indexOf(b) != null then return "."
         return char(b)
     end function
 
-    res = minicrypt.Encode.getEncoding(encoding)
+    res = Encode.getEncoding(encoding)
     if typeof(res) == "error" then return res
     encode = res[0]
 
@@ -57,10 +61,10 @@ minicrypt.Utils.hexdump = function(b64, encoding="base64")
 
     hexdump = []
     for i in range(0, bytes.len-1, 16)
-        line = minicrypt.Encode.intToHexBE(i) + "  "
+        line = Encode.intToHexBE(i) + "  "
         block = bytes[i:i+16]
         for b in block
-            line = line + minicrypt.Encode.BYTE2HEX[b] + " "
+            line = line + Encode.BYTE2HEX[b] + " "
         end for
         line = line + "   " * (16 - block.len)
         line = line[:34] + " " + line[34:] + " |"

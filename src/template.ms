@@ -1,8 +1,11 @@
+// Template for a new module
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 __scope = function //-------------
+locals.minicrypt = minicrypt
 
 minicrypt.Template = {}                              // EDIT
+Template = minicrypt.Template                        // EDIT
 
 // Your code here
 

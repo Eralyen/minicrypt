@@ -1,7 +1,7 @@
 if not globals.hasIndex("minicrypt") then minicrypt = {}
 
 __scope = function //-------------
-
+locals.minicrypt = minicrypt
 // Returns a map like {"classID": "error", "location": location, "code": code}. 'location' is the name of the function where the error originated from, and 'code' is a descriptive error string.
 // @param {string} location
 // @param {string} code
@@ -13,6 +13,7 @@ minicrypt.Error = function(location, code)
         "code": code,
     }
 end function
+Error = @minicrypt.Error
 
 end function //-------------
 

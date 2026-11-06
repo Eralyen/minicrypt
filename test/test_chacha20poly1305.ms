@@ -4,7 +4,6 @@ import_code("../src/chacha20-poly1305.ms")
 import_code("../src/encode.ms")
 
 test_chacha20poly1305_cipher_and_aead = function
-    minicrypt.ChaCha.ROUNDS = 20
     key = minicrypt.Encode.hexBytesToB32("00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:4a:00:00:00:00")
     counter = 1
@@ -199,6 +198,25 @@ test_chacha20poly1305_input_validation = function
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, nonce, malformed_aead)), "error", "Reject malformed AEAD before decrypting")
 end function
 TEST "CHACHA20-POLY1305 - Input validation", @test_chacha20poly1305_input_validation
+
+test_chacha8poly1305 = function
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
+    nonce = [1, 2, 3]
+    aad = minicrypt.Encode.encodeText8("ChaCha8 AAD")
+    plaintext = minicrypt.Encode.encodeText8("ChaCha8 Poly1305 round-trip test")
+
+    chacha8_result = minicrypt.ChaCha8Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+    chacha20_result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+
+    expectTrue(minicrypt.ChaCha8Poly1305.verify(key, chacha8_result[1], nonce, chacha8_result[0]), "ChaCha8-Poly1305 authenticates its result")
+    expectFalse(minicrypt.ChaCha20Poly1305.verify(key, chacha8_result[1], nonce, chacha8_result[0]), "ChaCha20-Poly1305 rejects the ChaCha8 tag")
+    expectTrue(chacha8_result[0] != chacha20_result[0], "ChaCha8 ciphertext differs from ChaCha20")
+
+    decrypted = minicrypt.ChaCha8Poly1305.decrypt(key, nonce, chacha8_result[0])
+    expectEqual(decrypted[0], aad[0], "ChaCha8-Poly1305 recovers AAD")
+    expectEqual(decrypted[2], plaintext[0], "ChaCha8-Poly1305 recovers plaintext")
+end function
+TEST "CHACHA8-POLY1305 - Authentication and round-trip", @test_chacha8poly1305
 
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS

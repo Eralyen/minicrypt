@@ -19,6 +19,7 @@ Rather than implementing the classic algorithms such as SHA-2, AES, RSA, we focu
 ### Symmetric Encryption
 - ChaCha: a stream cypher that should be much faster than AES in Greyscript and MiniScript applications.
 - ChaCha20-Poly1305: an AEAD algorithm that provides authentication and additional authenticated data in plaintext.
+- ChaCha8-Poly1305: an 8-round variant with the same API and message format as ChaCha20-Poly1305.
 
 ### Public Key Encryption (WIP)
 - X25519: fast DH key exchange using Curve25519.

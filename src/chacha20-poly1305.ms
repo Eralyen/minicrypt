@@ -26,14 +26,12 @@ Error = @minicrypt.Error
 minicrypt.ChaCha = {}
 minicrypt.Poly1305 = {}
 minicrypt.ChaCha20Poly1305 = {}
+minicrypt.ChaCha8Poly1305 = {}
+
 ChaCha = minicrypt.ChaCha
 Poly1305 = minicrypt.Poly1305
 ChaCha20Poly1305 = minicrypt.ChaCha20Poly1305
-
-// Edit this if performance is important to your project, but note that this implementation only supports an even number of rounds.
-// I recommend 8 rounds, following this paper: https://eprint.iacr.org/2019/1492.pdf
-// 7 years have passed, and ChaCha8 is still just as solid: https://www.bfswa.blog/p/6-years-after-too-much-crypto
-ChaCha.ROUNDS = 20
+ChaCha8Poly1305 = minicrypt.ChaCha8Poly1305
 
 // Calculates 'output = plaintext ^ key'. 'output', 'plaintext' and 'key' should be equally-sized lists of 32-bit integers. For performance reasons, no checks are done to verify the inputs.
 // @param {list<number>} output    - output list. Should be initialized as [0] * 16 or recycled
@@ -73,14 +71,15 @@ ChaCha.QR = function(x, i, j, k, l)
 end function
 QR = @ChaCha.QR
 
-// Takes a starting ChaCha state and performs 'ChaCha.ROUNDS' (default 20) ChaCha rounds on it, then adds it to the original state again.
+// Takes a starting ChaCha state and performs the specified even number of ChaCha rounds on it, then adds it to the original state again.
 // @param {list<number>} output - final state. Should be initialized as [0] * 16 or recycled
 // @param {list<number>} input  - initial state, a list of 16 32-bit integers.
+// @param {number}       rounds - (optional) even number of ChaCha rounds, default 8
 // @returns {null}
-ChaCha.chachaBlock = function(output, input)
+ChaCha.chachaBlock = function(output, input, rounds = 8)
     x = input[:]
     QR = @ChaCha.QR
-    for i in range(0, ChaCha.ROUNDS-1, 2)
+    for i in range(0, rounds-1, 2)
         // Odd round
         QR(x, 0, 4,  8, 12) // column 1
 		QR(x, 1, 5,  9, 13) // column 2
@@ -115,8 +114,9 @@ end function
 // @param {list<number>}   input      - a list of 32-bit integers. The input to be encrypted/decrypted
 // @param {number}         byte_count - a 32-bit integer. The length of 'input' in bytes
 // @param {number}         [counter]  - a 32-bit integer. The starting ChaCha counter, is used to ensure that (counter + nonce) is unique for each block
+// @param {number}         [rounds]   - an even number of ChaCha rounds, default 8
 // @returns {list<number>}            - a list of 32-bit integers, the same byte count as 'input'
-ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
+ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1, rounds = 8)
     state = ChaCha.assembleState(key, nonce, counter)
     output = []
     key_stream = [0] * 16
@@ -125,7 +125,7 @@ ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
     if input.len >= 16 then
         for i in range(0, floor(input.len/16)-1)
             state[12] = counter + i
-            ChaCha.chachaBlock(key_stream, state)
+            ChaCha.chachaBlock(key_stream, state, rounds)
             block = input[i*16:i*16+16]
             ChaCha.xorBlock(encrypted_block, block, key_stream)
             output  = output + encrypted_block
@@ -134,7 +134,7 @@ ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
     if input.len % 16 != 0 then
         i = i + 1
         state[12] = counter + i
-        ChaCha.chachaBlock(key_stream, state)
+        ChaCha.chachaBlock(key_stream, state, rounds)
         block = input[i*16:input.len]
         ChaCha.xorBlock(encrypted_block, block, key_stream)
         output = output + encrypted_block[:input.len-i*16]
@@ -155,16 +155,6 @@ ChaCha.getHedgedNonce = function(plaintext)
     nonce = BLAKE3.finalizeHash(hash_state, 3)
     return nonce
 end function
-
-//------------------------------
-// Specific variants
-minicrypt.ChaCha20 = new minicrypt.ChaCha
-ChaCha20 = minicrypt.ChaCha20
-ChaCha20.ROUNDS = 20
-
-minicrypt.ChaCha8 = new minicrypt.ChaCha
-ChaCha8 = minicrypt.ChaCha8
-ChaCha8.ROUNDS = 8
 
 // addition of two numbers as lists of 17 bytes. the result is stored in a
 Poly1305.add = function(a, b)
@@ -272,13 +262,14 @@ end function
 // ----------
 
 // Generates a one-time key for Poly1305 using ChaCha
+// Uses 8 rounds of ChaCha
 // @param {list<number>}   key   - a list of 8 32-bit integers
 // @param {list<number>}   nonce - a list of 3 32-bit integers
 // @returns {list<number>}       - a list of 8 32-bit integers
-ChaCha20Poly1305.keygen = function(key, nonce)
-    state = ChaCha20.assembleState(key, nonce, 0)
+ChaCha8Poly1305.keygen = function(key, nonce)
+    state = ChaCha.assembleState(key, nonce, 0)
     block = [0] * 16
-    ChaCha20.chachaBlock(block, state)
+    ChaCha.chachaBlock(block, state, 8)
     return block[:8]
 end function
 
@@ -288,7 +279,7 @@ end function
 // @param {list<number>}   ciphertext     - a list of 32-bit integers, any length
 // @param {number}         ciphertext_len - the length of the ciphertext in bytes
 // @returns {list<number>}                - a list of 32-bit integers
-ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
+ChaCha8Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
     aad_len32 = aad_len % 4294967296
     ciphertext_len32 = ciphertext_len % 4294967296
     return  aad        + [0] * (ceil(aad_len / 16) * 4 - ceil(aad_len / 4)) +
@@ -301,7 +292,7 @@ end function
 // @description The AAD and ciphertext can be any length
 // @param {list<number>} aead - a list of 32-bit integers
 // @returns {list | error}    - if not an error, it returns [aad , aad_len, ciphertext, ciphertext_len] -> [list<number>, number, list<number>, number]
-ChaCha20Poly1305.splitAEAD = function(aead)
+ChaCha8Poly1305.splitAEAD = function(aead)
     if aead.len < 4 then return Error("ChaCha20Poly1305.splitAEAD", "short_aead")
     if aead.len % 4 != 0 then return Error("ChaCha20Poly1305.splitAEAD", "unpadded_aead")
     aad_len = aead[-4] + aead[-3] * 4294967296
@@ -318,7 +309,7 @@ end function
 // @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
 // @param {list<number>} aead - a list of 32-bit integers
 // @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
-ChaCha20Poly1305.splitMessage = function(msg)
+ChaCha8Poly1305.splitMessage = function(msg)
     if msg.len < 11 or msg.len % 4 != 3 then return Error("ChaCha20Poly1305.splitMessage", "malformed_msg")
     return [msg[:4], msg[4:7], msg[7:]]
 end function
@@ -333,9 +324,90 @@ end function
 // @param {list<number>} plaintext     - a list of 32-bit integers, any size
 // @param {number}       plaintext_len - the length of 'plaintext' in bytes
 // @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
+ChaCha8Poly1305.encrypt = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
+    otk = ChaCha8Poly1305.keygen(key, nonce)
+    ciphertext = ChaCha.chacha(key, nonce, plaintext, plaintext_len, 1, 8)
+    aead = ChaCha8Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
+    tag = Poly1305.mac(otk, aead, aead.len * 4)
+    return [aead, tag]
+end function
+
+// Decrypts the AEAD WITHOUT AUTHENTICATING IT using the provided key and nonce. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// @description The aad is a list of 32-bit integers of any length.
+// @description The plaintext is a list of 32-bit integers of any length.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @returns {list | error}             - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number] or an error
+ChaCha8Poly1305.decrypt = function(key, nonce, aead)
+    res = ChaCha8Poly1305.splitAEAD(aead)
+    if typeof(res) == "error" then return res
+    aad = res[0]
+    aad_len = res[1]
+    ciphertext = res[2]
+    ciphertext_len = res[3]
+    plaintext = ChaCha.chacha(key, nonce, ciphertext, ciphertext_len, 1, 8)
+    return [aad, aad_len, plaintext, ciphertext_len]
+end function
+
+// Calculates a message authentication code based on the AEAD. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// @description The aad is a list of 32-bit integers of any length.
+// @description The plaintext is a list of 32-bit integers of any length.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
+ChaCha8Poly1305.verify = function(key, tag, nonce, aead)
+    otk = ChaCha8Poly1305.keygen(key, nonce)
+    actual_tag = Poly1305.mac(otk, aead, aead.len * 4)
+    return actual_tag == tag
+end function
+
+// Generates a one-time key for Poly1305 using ChaCha
+// RFC 8439 requires 20 rounds for the one-time key.
+// @param {list<number>}   key   - a list of 8 32-bit integers
+// @param {list<number>}   nonce - a list of 3 32-bit integers
+// @returns {list<number>}       - a list of 8 32-bit integers
+ChaCha20Poly1305.keygen = function(key, nonce)
+    state = ChaCha.assembleState(key, nonce, 0)
+    block = [0] * 16
+    ChaCha.chachaBlock(block, state, 20)
+    return block[:8]
+end function
+
+// Assembles the ChaCha20-Poly1305 AEAD (Authenticated Encryption with Associated Data) from its constituent parts
+// @param {list<number>}   aad            - a list of 32-bit integers, any length
+// @param {number}         aad_len        - the length of the aad in bytes
+// @param {list<number>}   ciphertext     - a list of 32-bit integers, any length
+// @param {number}         ciphertext_len - the length of the ciphertext in bytes
+// @returns {list<number>}                - a list of 32-bit integers
+ChaCha20Poly1305.AEAD = @ChaCha8Poly1305.AEAD
+
+// Splits the AEAD into its components. Returns [aad , aad_len, ciphertext, ciphertext_len] if the AEAD is well-formed, or an error otherwise.
+// @description The AAD and ciphertext can be any length
+// @param {list<number>} aead - a list of 32-bit integers
+// @returns {list | error}    - if not an error, it returns [aad , aad_len, ciphertext, ciphertext_len] -> [list<number>, number, list<number>, number]
+ChaCha20Poly1305.splitAEAD = @ChaCha8Poly1305.splitAEAD
+
+// Splits a ChaCha20-Poly1305 into its components. Returns [tag, nonce, aead] if the message is well-formed, or an error otherwise.
+// @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
+// @param {list<number>} aead - a list of 32-bit integers
+// @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
+ChaCha20Poly1305.splitMessage = @ChaCha8Poly1305.splitMessage
+
+// Encrypts and authenticates the plaintext and aad using the provided key and nonce. Returns [aead, tag]
+// @description The AEAD is a list of 32-bit integers of any length depending on the aad and plaintext.
+// @description The tag is a list of 4 32-bit integers, and is the Poly1305 message authentication code computed on the AEAD post-encryption.
+// @param {list<number>} key           - a list of 8 32-bit integers
+// @param {list<number>} nonce         - a list of 3 32-bit integers
+// @param {list<number>} aad           - a list of 32-bit integers, any size
+// @param {number}       aad_len       - the length of 'aad' in bytes
+// @param {list<number>} plaintext     - a list of 32-bit integers, any size
+// @param {number}       plaintext_len - the length of 'plaintext' in bytes
+// @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
 ChaCha20Poly1305.encrypt = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
     otk = ChaCha20Poly1305.keygen(key, nonce)
-    ciphertext = ChaCha20.chacha(key, nonce, plaintext, plaintext_len, 1)
+    ciphertext = ChaCha.chacha(key, nonce, plaintext, plaintext_len, 1, 20)
     aead = ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
     tag = Poly1305.mac(otk, aead, aead.len * 4)
     return [aead, tag]
@@ -355,7 +427,7 @@ ChaCha20Poly1305.decrypt = function(key, nonce, aead)
     aad_len = res[1]
     ciphertext = res[2]
     ciphertext_len = res[3]
-    plaintext = ChaCha20.chacha(key, nonce, ciphertext, ciphertext_len, 1)
+    plaintext = ChaCha.chacha(key, nonce, ciphertext, ciphertext_len, 1, 20)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 

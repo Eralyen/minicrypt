@@ -8,7 +8,7 @@ import_code("./error.ms")
 __scope = function //-------------
 locals.minicrypt = minicrypt
 locals.BLAKE3 = minicrypt.BLAKE3
-locals.ChaCha8 = minicrypt.ChaCha8
+locals.ChaCha = minicrypt.ChaCha
 locals.Error = @minicrypt.Error
 
 minicrypt.Random = {}
@@ -59,7 +59,7 @@ Random.harvestEntropy = function(entropy_bits = 128, timeout = 1)
     hash_state = BLAKE3.startHash
     BLAKE3.updateHash(hash_state, sample, sample.len * 4)
     self.seed = BLAKE3.finalizeHash(hash_state, 11)
-    self.state = ChaCha8.assembleState(self.seed[:8], self.seed[8:], 0)
+    self.state = ChaCha.assembleState(self.seed[:8], self.seed[8:], 0)
 end function
 
 // Returns an error if the seeding timed out
@@ -77,7 +77,7 @@ Random.pregenWords = function(blocks = 1)
     end if
     output = [0] * 16
     for i in range(blocks-1)
-        ChaCha8.chachaBlock(output, self.state)
+        ChaCha.chachaBlock(output, self.state, 8)
         self.state[12] = self.state[12] + 1
         self.output = self.output + output
     end for
@@ -91,7 +91,7 @@ Random.getRandomWords = function(n_words)
     end if
     output = [0] * 16
     while self.output.len < n_words 
-        ChaCha8.chachaBlock(output, self.state)
+        ChaCha.chachaBlock(output, self.state, 8)
         self.state[12] = self.state[12] + 1
         self.output = self.output + output
     end while

@@ -18,6 +18,8 @@ PERFORMANCE = {
 
 key_AES    = "foobar1234567890"
 key_chacha = "666f6f62617231323334353637383930666f6f62617231323334353637383930" // same value as above, but in hex and repeated 2x
+key_chacha_bytes = minicrypt.Encode.encodeHex(key_chacha)[0]
+nonce_chacha = [0, 0, 0]
 
 printPerformance = function(PERFORMANCE, i)
     print "Results:"
@@ -51,49 +53,47 @@ for r in range(0, ROUNDS.len-1)
     length = ROUNDS[r]
     print "Encryption of " + REPEATS + " strings of length " + length
     plaintext = CHAR * length
+    plaintext_8bit = minicrypt.Encode.encodeText8(plaintext)
+    plaintext_16bit = minicrypt.Encode.encodeText16(plaintext)
 
     // ChaCha8-8bit
-    cc.ROUNDS = 8
     start = time
     for i in range(0, REPEATS-1)
-        ciphertext = cc.encrypt(key_chacha, plaintext, "8bit")
-        decrypted = cc.decrypt(key_chacha, ciphertext, "8bit")
+        ciphertext = cc.chacha(key_chacha_bytes, nonce_chacha, plaintext_8bit[0], plaintext_8bit[1], 1, 8)
+        decrypted = cc.chacha(key_chacha_bytes, nonce_chacha, ciphertext, plaintext_8bit[1], 1, 8)
     end for
     t = time - start
     PERFORMANCE["ChaCha8-8bit"][r] = t / REPEATS
 
     // ChaCha8
-    cc.ROUNDS = 8
     start = time
     for i in range(0, REPEATS-1)
-        ciphertext = cc.encrypt(key_chacha, plaintext)
-        decrypted = cc.decrypt(key_chacha, ciphertext)
+        ciphertext = cc.chacha(key_chacha_bytes, nonce_chacha, plaintext_16bit[0], plaintext_16bit[1], 1, 8)
+        decrypted = cc.chacha(key_chacha_bytes, nonce_chacha, ciphertext, plaintext_16bit[1], 1, 8)
     end for
     t = time - start
     PERFORMANCE["ChaCha8"][r] = t / REPEATS
     
     // ChaCha20
-    cc.ROUNDS = 20
     start = time
     for i in range(0, REPEATS-1)
-        ciphertext = cc.encrypt(key_chacha, plaintext)
-        decrypted = cc.decrypt(key_chacha, ciphertext)
+        ciphertext = cc.chacha(key_chacha_bytes, nonce_chacha, plaintext_16bit[0], plaintext_16bit[1], 1, 20)
+        decrypted = cc.chacha(key_chacha_bytes, nonce_chacha, ciphertext, plaintext_16bit[1], 1, 20)
     end for
     t = time - start
     PERFORMANCE["ChaCha20"][r] = t / REPEATS
 
     // ChaCha20-Poly1305
-    cc.ROUNDS = 20
     start = time
     for i in range(0, REPEATS-1)
-        ciphertext = c20p.encrypt(key_chacha, plaintext)
-        decrypted = c20p.decrypt(key_chacha, ciphertext)
+        encrypted = c20p.encrypt(key_chacha_bytes, nonce_chacha, [], 0, plaintext_16bit[0], plaintext_16bit[1])
+        verified = c20p.verify(key_chacha_bytes, encrypted[1], nonce_chacha, encrypted[0])
+        decrypted = c20p.decrypt(key_chacha_bytes, nonce_chacha, encrypted[0])
     end for
     t = time - start
     PERFORMANCE["ChaCha20-Poly1305"][r] = t / REPEATS
 
     // AES-128
-    cc.ROUNDS = 20
     start = time
     for i in range(0, REPEATS-1)
         ciphertext = AES128("encrypt", key_AES, plaintext)

@@ -71,7 +71,6 @@ test_rfc8439_chacha_core = function
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:09:00:00:00:4a:00:00:00:00")
     counter = 1
     output = [0] * 16
-    minicrypt.ChaCha.ROUNDS = 20
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     expected_state = [
         "61707865", "3320646e", "79622d32", "6b206574",
@@ -87,18 +86,17 @@ test_rfc8439_chacha_core = function
         "466482d2", "09aa9f07", "05d7c214", "a2028bd9",
         "d19c12b5", "b94e16de", "e883d0cb", "4e3c50a2",
         ]
-    minicrypt.ChaCha.chachaBlock(output, state)
+    minicrypt.ChaCha.chachaBlock(output, state, 20)
     expectEqual(minicrypt.Encode.B32ToHexBE(output), expected_final, "State after 20 ChaChaBlock rounds + addition")
 // https://www.rfc-editor.org/info/rfc8439/#section-2.4.2
-    minicrypt.ChaCha.ROUNDS = 20
     key = minicrypt.Encode.hexBytesToB32("00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f:10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:4a:00:00:00:00")
     counter = 1
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
 
     plaintext_encoded = minicrypt.Encode.encodeText8(plaintext)
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter)
-    deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext_encoded[1], counter)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
+    deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext_encoded[1], counter, 20)
     expectEqual(ciphertext.len, ceil(plaintext_encoded[1] / 4), "Ciphertext length")
     expectEqual(deciphered, plaintext_encoded[0])
 end function
@@ -154,7 +152,7 @@ test_rfc8439_additional_vectors = function
     ]
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
-    minicrypt.ChaCha.chachaBlock(final_state, state)
+    minicrypt.ChaCha.chachaBlock(final_state, state, 20)
 
     expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #1")
     // The keystream is just a different way to write the ChaCha state.
@@ -173,7 +171,7 @@ test_rfc8439_additional_vectors = function
     ]
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
-    minicrypt.ChaCha.chachaBlock(final_state, state)
+    minicrypt.ChaCha.chachaBlock(final_state, state, 20)
 
     expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #2")
     // The keystream is just a different way to write the ChaCha state.
@@ -192,7 +190,7 @@ test_rfc8439_additional_vectors = function
         ]
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
-    minicrypt.ChaCha.chachaBlock(final_state, state)
+    minicrypt.ChaCha.chachaBlock(final_state, state, 20)
 
     expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #3")
     // The keystream is just a different way to write the ChaCha state.
@@ -211,7 +209,7 @@ test_rfc8439_additional_vectors = function
     ]
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
-    minicrypt.ChaCha.chachaBlock(final_state, state)
+    minicrypt.ChaCha.chachaBlock(final_state, state, 20)
 
     expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #4")
     // The keystream is just a different way to write the ChaCha state.
@@ -230,7 +228,7 @@ test_rfc8439_additional_vectors = function
         ]
     state = minicrypt.ChaCha.assembleState(key, nonce, counter)
     final_state = [0] * 16
-    minicrypt.ChaCha.chachaBlock(final_state, state)
+    minicrypt.ChaCha.chachaBlock(final_state, state, 20)
 
     expectEqual(minicrypt.Encode.B32ToHexBE(final_state), expected_state, "Test Vector #5")
     // The keystream is just a different way to write the ChaCha state.
@@ -243,7 +241,7 @@ test_rfc8439_additional_vectors = function
     plaintext = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
     plaintext_len = 64
     ciphertext_expected = minicrypt.Encode.hexBytesToB32("76:b8:e0:ad:a0:f1:3d:90:40:5d:6a:e5:53:86:bd:28:bd:d2:19:b8:a0:8d:ed:1a:a8:36:ef:cc:8b:77:0d:c7:da:41:59:7c:51:57:48:8d:77:24:e0:3f:b8:d8:4a:37:6a:43:b8:f4:15:18:a1:1c:c3:87:b6:69:b2:ee:65:86")
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext, plaintext_len, counter)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext, plaintext_len, counter, 20)
     expectEqual(ciphertext, ciphertext_expected, "Test Vector #1")
 
     // TEST VECTOR #2
@@ -283,7 +281,7 @@ test_rfc8439_additional_vectors = function
     for c in ciphertext_expected
         ciphertext_expected_b32 = ciphertext_expected_b32 + minicrypt.Encode.hexBytesToB32(c)
     end for
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
     expectEqual(ciphertext, ciphertext_expected_b32, "Test Vector #2")
 
     // TEST VECTOR #3
@@ -310,7 +308,7 @@ test_rfc8439_additional_vectors = function
     for c in ciphertext_expected
         ciphertext_expected_b32 = ciphertext_expected_b32 + minicrypt.Encode.hexBytesToB32(c)
     end for
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
     expectEqual(ciphertext, ciphertext_expected_b32, "Test Vector #3")
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.3
     check = function(key, msg, byte_count, tag, note)
@@ -434,8 +432,6 @@ test_rfc8439_additional_vectors = function
     check(key, data, data_byte_count, expected_tag, "Test Vector #11")
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.4
-    minicrypt.ChaCha.ROUNDS = 20
-
     // Test Vector #1
     chacha_key = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
     nonce = minicrypt.Encode.hexBytesToB32("00:00:00:00:00:00:00:00:00:00:00:00")
@@ -458,8 +454,6 @@ test_rfc8439_additional_vectors = function
     expectEqual(actual_poly1305_key, expected_poly1305_key, "Test Vector #3")
 
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.5
-    minicrypt.ChaCha.ROUNDS = 20
-
     // Key
     key = minicrypt.Encode.hexBytesToB32("1c:92:40:a5:eb:55:d3:8a:f3:33:88:86:04:f6:b5:f0:47:39:17:c1:40:2b:80:09:9d:ca:5c:bc:20:70:75:c0")
 

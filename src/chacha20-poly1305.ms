@@ -182,7 +182,7 @@ end function
 // @param {list<number>}   msg        - list of 32-bit integers
 // @param {number}         byte_count - length of the message in bytes
 // @returns {list<number>}            - list of 4 32-bit integers
-Poly1305.macRaw = function(key, msg, byte_count)
+Poly1305.mac = function(key, msg, byte_count)
     k = []
     for i in [0,1,2,3,4,5,6,7]
         wk = key[i]
@@ -333,11 +333,11 @@ end function
 // @param {list<number>} plaintext     - a list of 32-bit integers, any size
 // @param {number}       plaintext_len - the length of 'plaintext' in bytes
 // @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
-ChaCha20Poly1305.encryptRaw = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
+ChaCha20Poly1305.encrypt = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
     otk = ChaCha20Poly1305.keygen(key, nonce)
     ciphertext = ChaCha20.chacha(key, nonce, plaintext, plaintext_len, 1)
     aead = ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
-    tag = Poly1305.macRaw(otk, aead, aead.len * 4)
+    tag = Poly1305.mac(otk, aead, aead.len * 4)
     return [aead, tag]
 end function
 
@@ -348,7 +348,7 @@ end function
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
 // @returns {list | error}             - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number] or an error
-ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
+ChaCha20Poly1305.decrypt = function(key, nonce, aead)
     res = ChaCha20Poly1305.splitAEAD(aead)
     if typeof(res) == "error" then return res
     aad = res[0]
@@ -366,9 +366,9 @@ end function
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
 // @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
-ChaCha20Poly1305.verifyRaw = function(key, tag, nonce, aead)
+ChaCha20Poly1305.verify = function(key, tag, nonce, aead)
     otk = ChaCha20Poly1305.keygen(key, nonce)
-    actual_tag = Poly1305.macRaw(otk, aead, aead.len * 4)
+    actual_tag = Poly1305.mac(otk, aead, aead.len * 4)
     return actual_tag == tag
 end function
 

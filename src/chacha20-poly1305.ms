@@ -368,13 +368,13 @@ ChaCha8Poly1305.decrypt = function(key, nonce, aead)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
-// Calculates a message authentication code based on the AEAD. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// Calculates a message authentication code based on the AEAD. Returns a boolean. It's very important to authenticate the AEAD before calling this method.
 // @description The aad is a list of 32-bit integers of any length.
 // @description The plaintext is a list of 32-bit integers of any length.
 // @param {list<number>} key           - a list of 8 32-bit integers
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
-// @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
+// @returns {number}                   - true or false
 ChaCha8Poly1305.verify = function(key, tag, nonce, aead)
     otk = ChaCha8Poly1305.keygen(key, nonce)
     actual_tag = Poly1305.mac(otk, aead, aead.len * 4)
@@ -443,13 +443,13 @@ ChaCha20Poly1305.decrypt = function(key, nonce, aead)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
-// Calculates a message authentication code based on the AEAD. Returns [aad, aad_len, plaintext, plaintext_len]. It's very important to authenticate the AEAD before calling this method.
+// Calculates a message authentication code based on the AEAD. Returns a boolean. It's very important to authenticate the AEAD before calling this method.
 // @description The aad is a list of 32-bit integers of any length.
 // @description The plaintext is a list of 32-bit integers of any length.
 // @param {list<number>} key           - a list of 8 32-bit integers
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
-// @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
+// @returns {number}                   - true or false
 ChaCha20Poly1305.verify = function(key, tag, nonce, aead)
     otk = ChaCha20Poly1305.keygen(key, nonce)
     actual_tag = Poly1305.mac(otk, aead, aead.len * 4)

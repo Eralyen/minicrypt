@@ -305,15 +305,6 @@ ChaCha8Poly1305.splitAEAD = function(aead)
     return [aad, aad_len, ciphertext, ciphertext_len]
 end function
 
-// Splits a ChaCha20-Poly1305 into its components. Returns [tag, nonce, aead] if the message is well-formed, or an error otherwise.
-// @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
-// @param {list<number>} aead - a list of 32-bit integers
-// @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
-ChaCha8Poly1305.splitMessage = function(msg)
-    if msg.len < 11 or msg.len % 4 != 3 then return Error("ChaCha20Poly1305.splitMessage", "malformed_msg")
-    return [msg[:4], msg[4:7], msg[7:]]
-end function
-
 // Encrypts and authenticates the plaintext and aad using the provided key and nonce. Returns [aead, tag]
 // @description The AEAD is a list of 32-bit integers of any length depending on the aad and plaintext.
 // @description The tag is a list of 4 32-bit integers, and is the Poly1305 message authentication code computed on the AEAD post-encryption.
@@ -388,12 +379,6 @@ ChaCha20Poly1305.AEAD = @ChaCha8Poly1305.AEAD
 // @param {list<number>} aead - a list of 32-bit integers
 // @returns {list | error}    - if not an error, it returns [aad , aad_len, ciphertext, ciphertext_len] -> [list<number>, number, list<number>, number]
 ChaCha20Poly1305.splitAEAD = @ChaCha8Poly1305.splitAEAD
-
-// Splits a ChaCha20-Poly1305 into its components. Returns [tag, nonce, aead] if the message is well-formed, or an error otherwise.
-// @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
-// @param {list<number>} aead - a list of 32-bit integers
-// @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
-ChaCha20Poly1305.splitMessage = @ChaCha8Poly1305.splitMessage
 
 // Encrypts and authenticates the plaintext and aad using the provided key and nonce. Returns [aead, tag]
 // @description The AEAD is a list of 32-bit integers of any length depending on the aad and plaintext.

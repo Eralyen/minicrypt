@@ -3,17 +3,14 @@ import_code("./MiniTest/MiniTest.src")
 import_code("../src/encode.ms")
 import_code("../src/utils.ms")
 
-test_hexdump_empty_short_input = function
+test_hexdump = function
     expectEqual(minicrypt.Utils.hexdump(""), "")
 
     short_dump = minicrypt.Utils.hexdump(minicrypt.Encode.toBase64([67305985], 4))
     expected = "00000000  01 02 03 04 " + "   " * 12
     expected = expected[:34] + " " + expected[34:] + " |....|"
     expectEqual(short_dump, expected)
-end function
-TEST "UTILS - Hexdump empty and short input", @test_hexdump_empty_short_input
-
-test_hexdump_wraps = function
+    
     bytes = minicrypt.Encode.encodeText8("abcdefghijklmnopq")[0]
     b64 = minicrypt.Encode.toBase64(bytes, 17)
     lines = minicrypt.Utils.hexdump(b64).split(char(10))
@@ -24,13 +21,10 @@ test_hexdump_wraps = function
     expected_last = "00000010  71 " + "   " * 15
     expected_last = expected_last[:34] + " " + expected_last[34:] + " |q|"
     expectEqual(lines[1], expected_last)
-end function
-TEST "UTILS - Hexdump wraps at 16 bytes", @test_hexdump_wraps
 
-test_hexdump_invalid_base64 = function
     expectEqual(typeof(minicrypt.Utils.hexdump("!!!!")), "error")
 end function
-TEST "UTILS - Hexdump propagates invalid Base64", @test_hexdump_invalid_base64
+TEST "UTILS - Hexdump", @test_hexdump
 
 if not globals.hasIndex("_test_main") then
     RUN_ALL_TESTS

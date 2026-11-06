@@ -170,61 +170,6 @@ Encode.decodeText8 = function(input, len)
     return text
 end function
 
-// Turns a big integer from base 2^32 to base 2^26, which enables big integer math
-// @param {list<number>} bi32   - a list of 32-bit integers
-// @returns {list<number>}      - a list of 26-bit integers
-Encode.B32toB26 = function(bi32)
-    bi26 = [0] * ceil(bi32.len/26*32)
-    low = 0
-    high = 26
-    j = 0
-    for i in range(0, bi26.len-1)
-        high = low - 6
-        if high < 0 then high = high + 32
-        if low < high then
-            bi26[i] = floor((bi32[j] % Encode.POW2[high]) / Encode.POW2[low])
-        else
-            bi26[i] = floor(bi32[j] / Encode.POW2[low])
-            if j != bi32.len-1 then
-                bi26[i] = bi26[i] + (bi32[j+1] % Encode.POW2[high]) * Encode.POW2[32-low]
-                j = j + 1
-            end if
-        end if
-        low = high
-    end for
-    return bi26
-end function
-
-// Turns a big integer from base 2^26 to base 2^32
-// @param {list<number>} bi26   - a list of 26-bit integers
-// @returns {list<number>}      - a list of 32-bit integers
-Encode.B26toB32 = function(bi26)
-    bi32 = [0] * floor(bi26.len * 26 / 32) // The usage of floor() assumes that the original number had radix 2^32 and therefore the 26-bit representation is generally not used to capacity
-    low = 0
-    j = 0
-    for i in range(0, bi32.len-1)
-        high = (low + 6) % 26
-        bi32[i] = floor(bi26[j] / Encode.POW2[low])
-        if low < 20 then
-            if j != bi26.len-1 then
-                j = j + 1
-                bi32[i] = bi32[i] + (bi26[j] % Encode.POW2[high]) * Encode.POW2[26-low]
-            end if
-        else
-            if j != bi26.len-1 then
-                j = j + 1
-                bi32[i] = bi32[i] + bi26[j] * Encode.POW2[26-low]
-            end if
-            if j != bi26.len-1 then
-                j = j + 1
-                bi32[i] = bi32[i] + (bi26[j] % Encode.POW2[high]) * Encode.POW2[32-high]
-            end if
-        end if
-        low = high
-    end for
-    return bi32
-end function
-
 // Takes a list of 32-bit numbers and returns a base64 string
 // @param {list<number>} input - a list of 32-bit integers
 // @param {number}       len   - the length of 'input' in bytes. Max 2^24

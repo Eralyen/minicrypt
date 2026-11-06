@@ -13,6 +13,7 @@ locals.minicrypt = minicrypt
 X25519 = minicrypt.X25519
 BLAKE3 = minicrypt.BLAKE3
 ChaCha8 = minicrypt.ChaCha
+Poly1305 = minicrypt.Poly1305
 ChaCha8Poly1305 = minicrypt.ChaCha8Poly1305
 Random = minicrypt.Random
 Error = @minicrypt.Error
@@ -124,8 +125,10 @@ end function
 
 // Poly1305 one-time authentication
 minicrypt.onetimeauth = function(message, key)
+    return [16, Poly1305.mac(key[1], message[1], message[0])]
 end function
 minicrypt.onetimeauth_verify = function(auth, message, key)
+    return [16, Poly1305.mac(key[1], message[1], message[0])] == auth
 end function
 
 // ==== HASHING AND CSPRNG ====

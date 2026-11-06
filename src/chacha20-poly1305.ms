@@ -13,24 +13,36 @@ import_code("./encode.ms")
 import_code("./error.ms")
 
 __scope = function //-------------
+locals.minicrypt = minicrypt
 
-minicrypt.Poly1305 = {}
+Math = minicrypt.Math
+xor32 = @Math.xor32
+ROTL = @Math.rotl
+
+BLAKE3 = minicrypt.BLAKE3
+Encode = minicrypt.Encode
+Error = @minicrypt.Error
 
 minicrypt.ChaCha = {}
+minicrypt.Poly1305 = {}
+minicrypt.ChaCha20Poly1305 = {}
+ChaCha = minicrypt.ChaCha
+Poly1305 = minicrypt.Poly1305
+ChaCha20Poly1305 = minicrypt.ChaCha20Poly1305
 
 // Edit this if performance is important to your project, but note that this implementation only supports an even number of rounds.
 // I recommend 8 rounds, following this paper: https://eprint.iacr.org/2019/1492.pdf
 // 7 years have passed, and ChaCha8 is still just as solid: https://www.bfswa.blog/p/6-years-after-too-much-crypto
-minicrypt.ChaCha.ROUNDS = 20
+ChaCha.ROUNDS = 20
 
 // Calculates 'output = plaintext ^ key'. 'output', 'plaintext' and 'key' should be equally-sized lists of 32-bit integers. For performance reasons, no checks are done to verify the inputs.
 // @param {list<number>} output    - output list. Should be initialized as [0] * 16 or recycled
 // @param {list<number>} plaintext - list of 0-16 32-bit integers
 // @param {list<number>} key       - list of 0-16 32-bit integers
 // @returns {null}
-minicrypt.ChaCha.xorBlock = function(output, plaintext, key)
+ChaCha.xorBlock = function(output, plaintext, key)
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15][:plaintext.len]
-        output[i] = minicrypt.Math.xor32(plaintext[i], key[i])
+        output[i] = Math.xor32(plaintext[i], key[i])
     end for
 end function
 
@@ -42,9 +54,7 @@ end function
 // @param {number}       k - the third  index
 // @param {number}       l - the fourth index
 // @returns {null}
-minicrypt.ChaCha.QR = function(x, i, j, k, l)
-    xor32 = @minicrypt.Math.xor32
-    ROTL = @minicrypt.Math.rotl
+ChaCha.QR = function(x, i, j, k, l)
     x[i] = (x[i] + x[j]) % 4294967296
     x[l] = xor32(x[i], x[l])
     x[l] = ROTL(x[l], 16)
@@ -61,15 +71,16 @@ minicrypt.ChaCha.QR = function(x, i, j, k, l)
     x[j] = xor32(x[j], x[k])
     x[j] = ROTL(x[j], 7)
 end function
+QR = @ChaCha.QR
 
 // Takes a starting ChaCha state and performs 'ChaCha.ROUNDS' (default 20) ChaCha rounds on it, then adds it to the original state again.
 // @param {list<number>} output - final state. Should be initialized as [0] * 16 or recycled
 // @param {list<number>} input  - initial state, a list of 16 32-bit integers.
 // @returns {null}
-minicrypt.ChaCha.chachaBlock = function(output, input)
+ChaCha.chachaBlock = function(output, input)
     x = input[:]
-    QR = @minicrypt.ChaCha.QR
-    for i in range(0, minicrypt.ChaCha.ROUNDS-1, 2)
+    QR = @ChaCha.QR
+    for i in range(0, ChaCha.ROUNDS-1, 2)
         // Odd round
         QR(x, 0, 4,  8, 12) // column 1
 		QR(x, 1, 5,  9, 13) // column 2
@@ -91,7 +102,7 @@ end function
 // @params {list<number>}  nonce   - a list of 3 32-bit integers
 // @params {number}        counter - a 32-bit number
 // @returns {list<number>}         - the assembled ChaCha state, a list of 16 32-bit integers
-minicrypt.ChaCha.assembleState = function(key, nonce, counter)
+ChaCha.assembleState = function(key, nonce, counter)
     return [1634760805, 857760878, 2036477234, 1797285236] +
            key +
            [counter] +
@@ -105,8 +116,8 @@ end function
 // @param {number}         byte_count - a 32-bit integer. The length of 'input' in bytes
 // @param {number}         [counter]  - a 32-bit integer. The starting ChaCha counter, is used to ensure that (counter + nonce) is unique for each block
 // @returns {list<number>}            - a list of 32-bit integers, the same byte count as 'input'
-minicrypt.ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
-    state = minicrypt.ChaCha.assembleState(key, nonce, counter)
+ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
+    state = ChaCha.assembleState(key, nonce, counter)
     output = []
     key_stream = [0] * 16
     encrypted_block = [0] * 16
@@ -114,23 +125,23 @@ minicrypt.ChaCha.chacha = function(key, nonce, input, byte_count, counter = 1)
     if input.len >= 16 then
         for i in range(0, floor(input.len/16)-1)
             state[12] = counter + i
-            minicrypt.ChaCha.chachaBlock(key_stream, state)
+            ChaCha.chachaBlock(key_stream, state)
             block = input[i*16:i*16+16]
-            minicrypt.ChaCha.xorBlock(encrypted_block, block, key_stream)
+            ChaCha.xorBlock(encrypted_block, block, key_stream)
             output  = output + encrypted_block
         end for
     end if
     if input.len % 16 != 0 then
         i = i + 1
         state[12] = counter + i
-        minicrypt.ChaCha.chachaBlock(key_stream, state)
+        ChaCha.chachaBlock(key_stream, state)
         block = input[i*16:input.len]
-        minicrypt.ChaCha.xorBlock(encrypted_block, block, key_stream)
+        ChaCha.xorBlock(encrypted_block, block, key_stream)
         output = output + encrypted_block[:input.len-i*16]
     end if
     byte_r = byte_count % 4
     if byte_r != 0 then
-        output[-1] = output[-1] % minicrypt.Math.POW2[byte_r * 8]
+        output[-1] = output[-1] % Math.POW2[byte_r * 8]
     end if
     return output
 end function
@@ -138,10 +149,10 @@ end function
 // Creates a safe nonce (partially random, partially derived from the plaintext) if the user is unable to provide one with this key property: if plaintext1 -> nonce1 and plaintext2 -> nonce2, then if plaintext1 != plaintext2 then it's extremely unlikely that nonce1 == nonce2
 // @params {list<number>}  plaintext - a list of 32-bit integers.
 // @returns {list<number>}           - a list of 3 32-bit integers
-minicrypt.ChaCha.getHedgedNonce = function(plaintext)
-    hash_state = minicrypt.BLAKE3.startDeriveKey(plaintext, plaintext.len*4)
-    minicrypt.BLAKE3.updateHash(hash_state, [floor(rnd * 4294967296)], 4)
-    nonce = minicrypt.BLAKE3.finalizeHash(hash_state, 3)
+ChaCha.getHedgedNonce = function(plaintext)
+    hash_state = BLAKE3.startDeriveKey(plaintext, plaintext.len*4)
+    BLAKE3.updateHash(hash_state, [floor(rnd * 4294967296)], 4)
+    nonce = BLAKE3.finalizeHash(hash_state, 3)
     return nonce
 end function
 
@@ -154,18 +165,18 @@ end function
 // @param {number}           [counter]              - (optional) Leaving this as 1 is safe. Key generation for Poly1305 requires a value of 0
 // @returns {string | error}                        - The encryped message with some metadata for decryption: the byte length is the plaintext byte length + 20 bytes. The default format is base64. If something goes wrong, it returns an error object {"classID": "error"} instead.
 //
-// @example minicrypt.ChaCha.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "Cha Cha Real Smooth")
-minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null, counter = 1)
-    pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
+// @example ChaCha.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "Cha Cha Real Smooth")
+ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null, counter = 1)
+    pe = Encode.getEncoding(plaintext_encoding)
+    if pe == null then return Error("ChaCha.encrypt", "unsupported_encoding")
     encoder = pe[0]
 
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha.encrypt", "unsupported_encoding")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha.encrypt", "unsupported_encoding")
     decoder = ce[1]
     
-    if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.encrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("ChaCha.encrypt", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(plaintext)
@@ -173,10 +184,10 @@ minicrypt.ChaCha.encrypt = function(key, plaintext, plaintext_encoding = "16bit"
     plaintext_enc = res[0]
     plaintext_len = res[1]
 
-    if typeof(nonce) == "string" then nonce = minicrypt.Encode.encodeHex(nonce)[0]
-    if nonce == null then nonce = minicrypt.ChaCha.getHedgedNonce(plaintext_enc)
+    if typeof(nonce) == "string" then nonce = Encode.encodeHex(nonce)[0]
+    if nonce == null then nonce = ChaCha.getHedgedNonce(plaintext_enc)
 
-    ciphertext_enc = minicrypt.ChaCha.chacha(key_enc, nonce, plaintext_enc, plaintext_len, counter)
+    ciphertext_enc = ChaCha.chacha(key_enc, nonce, plaintext_enc, plaintext_len, counter)
     plaintext_len32 = plaintext_len % 4294967296
     enc = decoder(
         nonce +
@@ -194,18 +205,18 @@ end function
 // @param {number}           [counter]              - (optional) Needs to be the same as in the encryption stage
 // @returns {string | error}                       - The original message, or an error object {"classID": "error"}
 //
-// @example minicrypt.ChaCha.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "hxnPfNewn9b3lLo+LAAAAAAAAADK/ZbTfhBgbK4Aftz2V05UF02xIjXl0M3UiPrweYv6FdVJLo6W/7yyojAF/A==")
-minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", counter = 1)
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
+// @example ChaCha.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "hxnPfNewn9b3lLo+LAAAAAAAAADK/ZbTfhBgbK4Aftz2V05UF02xIjXl0M3UiPrweYv6FdVJLo6W/7yyojAF/A==")
+ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64", counter = 1)
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha20Poly1305.decrypt", "unsupported_encoding")
     encoder = ce[0]
 
-    pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
+    pe = Encode.getEncoding(plaintext_encoding)
+    if pe == null then return Error("ChaCha20Poly1305.decrypt", "unsupported_encoding")
     decoder = pe[1]
 
-    if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("ChaCha.decrypt", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(ciphertext)
@@ -213,14 +224,14 @@ minicrypt.ChaCha.decrypt = function(key, ciphertext, plaintext_encoding = "16bit
 
     msg_enc = res[0]
     msg_len = res[1]
-    if msg_enc.len < 5 then return minicrypt.Error("minicrypt.ChaCha.decrypt", "cyphertext_too_short")
+    if msg_enc.len < 5 then return Error("ChaCha.decrypt", "cyphertext_too_short")
 
     nonce_enc = msg_enc[:3]
     ciphertext_enc = msg_enc[5:]
     ciphertext_len = msg_enc[3] + msg_enc[4] * 4294967296
-    if ciphertext_enc.len != ceil(ciphertext_len/4) then return minicrypt.Error("minicrypt.ChaCha.decrypt", "cyphertext_len_mismatch")
+    if ciphertext_enc.len != ceil(ciphertext_len/4) then return Error("ChaCha.decrypt", "cyphertext_len_mismatch")
 
-    plaintext_enc = minicrypt.ChaCha.chacha(key_enc, nonce_enc, ciphertext_enc, ciphertext_len, counter)
+    plaintext_enc = ChaCha.chacha(key_enc, nonce_enc, ciphertext_enc, ciphertext_len, counter)
     plaintext_len = ciphertext_len
 
     plaintext = decoder(plaintext_enc, plaintext_len)
@@ -230,13 +241,15 @@ end function
 //------------------------------
 // Specific variants
 minicrypt.ChaCha20 = new minicrypt.ChaCha
-minicrypt.ChaCha20.ROUNDS = 20
+ChaCha20 = minicrypt.ChaCha20
+ChaCha20.ROUNDS = 20
 
 minicrypt.ChaCha8 = new minicrypt.ChaCha
-minicrypt.ChaCha8.ROUNDS = 8
+ChaCha8 = minicrypt.ChaCha8
+ChaCha8.ROUNDS = 8
 
 // addition of two numbers as lists of 17 bytes. the result is stored in a
-minicrypt.Poly1305.add = function(a, b)
+Poly1305.add = function(a, b)
     u = 0
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         u = u + a[i] + b[i]
@@ -251,7 +264,7 @@ end function
 // @param {list<number>}   msg        - list of 32-bit integers
 // @param {number}         byte_count - length of the message in bytes
 // @returns {list<number>}            - list of 4 32-bit integers
-minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
+Poly1305.macRaw = function(key, msg, byte_count)
     k = []
     for i in [0,1,2,3,4,5,6,7]
         wk = key[i]
@@ -291,7 +304,7 @@ minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
         for mpos in range(0, m.len-1, 16)
             c = m[mpos:mpos+16]
             c = c + [1] + [0] * (16-c.len)
-            minicrypt.Poly1305.add(h, c)
+            Poly1305.add(h, c)
             for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
                 x[i] = 0
                 for j in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
@@ -321,7 +334,7 @@ minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
         end for
     end if
     g = h[:]
-    minicrypt.Poly1305.add(h, minusp)
+    Poly1305.add(h, minusp)
     s = h[16] >= 128
     c = [0] * 17
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
@@ -329,7 +342,7 @@ minicrypt.Poly1305.macRaw = function(key, msg, byte_count)
         c[i] = k[i + 16]
     end for
     h[16] = h[16] + s * (g[16] - h[16])
-    minicrypt.Poly1305.add(h, c)
+    Poly1305.add(h, c)
     mac = [0, 0, 0, 0]
     for i in [0, 1, 2, 3]
         j = i*4
@@ -344,17 +357,17 @@ end function
 // @param {string} [ciphertext_encoding] - (optional) Format to encode the ciphertext with. Make sure it matches the ciphertext
 // @param {string} [mac_encoding]        - (optional) Format to encode the ciphertext with. Make sure it matches the ciphertext
 // @returns {string | error}             - The message authentication code, encoded with 'mac_encoding' (default = base64)
-minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64", mac_encoding = "base64")
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
+Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64", mac_encoding = "base64")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("Poly1305.mac", "unsupported_encoding")
     encoder = ce[0]
 
-    me = minicrypt.Encode.getEncoding(mac_encoding)
-    if me == null then return minicrypt.Error("minicrypt.Poly1305.mac", "unsupported_encoding")
+    me = Encode.getEncoding(mac_encoding)
+    if me == null then return Error("Poly1305.mac", "unsupported_encoding")
     decoder = me[1]
 
-    if key.len != 64 then return minicrypt.Error("minicrypt.Poly1305.mac", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("Poly1305.mac", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     res = encoder(ciphertext)
@@ -362,7 +375,7 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
     ciphertext_enc = res[0]
     ciphertext_len = res[1]
 
-    mac = minicrypt.Poly1305.macRaw(key_enc, ciphertext_enc, ciphertext_len)
+    mac = Poly1305.macRaw(key_enc, ciphertext_enc, ciphertext_len)
     if typeof(mac) == "error" then return mac
 
     if typeof(@mac_encoding) == "list" then return decoder(mac)
@@ -370,16 +383,15 @@ minicrypt.Poly1305.mac = function(key, ciphertext, ciphertext_encoding = "base64
 end function
 
 // ----------
-minicrypt.ChaCha20Poly1305 = {}
 
 // Generates a one-time key for Poly1305 using ChaCha
 // @param {list<number>}   key   - a list of 8 32-bit integers
 // @param {list<number>}   nonce - a list of 3 32-bit integers
 // @returns {list<number>}       - a list of 8 32-bit integers
-minicrypt.ChaCha20Poly1305.keygen = function(key, nonce)
-    state = minicrypt.ChaCha20.assembleState(key, nonce, 0)
+ChaCha20Poly1305.keygen = function(key, nonce)
+    state = ChaCha20.assembleState(key, nonce, 0)
     block = [0] * 16
-    minicrypt.ChaCha20.chachaBlock(block, state)
+    ChaCha20.chachaBlock(block, state)
     return block[:8]
 end function
 
@@ -389,7 +401,7 @@ end function
 // @param {list<number>}   ciphertext     - a list of 32-bit integers, any length
 // @param {number}         ciphertext_len - the length of the ciphertext in bytes
 // @returns {list<number>}                - a list of 32-bit integers
-minicrypt.ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
+ChaCha20Poly1305.AEAD = function(aad, aad_len, ciphertext, ciphertext_len)
     aad_len32 = aad_len % 4294967296
     ciphertext_len32 = ciphertext_len % 4294967296
     return  aad        + [0] * (ceil(aad_len / 16) * 4 - ceil(aad_len / 4)) +
@@ -402,14 +414,14 @@ end function
 // @description The AAD and ciphertext can be any length
 // @param {list<number>} aead - a list of 32-bit integers
 // @returns {list | error}    - if not an error, it returns [aad , aad_len, ciphertext, ciphertext_len] -> [list<number>, number, list<number>, number]
-minicrypt.ChaCha20Poly1305.splitAEAD = function(aead)
-    if aead.len < 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "short_aead")
-    if aead.len % 4 != 0 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "unpadded_aead")
+ChaCha20Poly1305.splitAEAD = function(aead)
+    if aead.len < 4 then return Error("ChaCha20Poly1305.splitAEAD", "short_aead")
+    if aead.len % 4 != 0 then return Error("ChaCha20Poly1305.splitAEAD", "unpadded_aead")
     aad_len = aead[-4] + aead[-3] * 4294967296
     ciphertext_len = aead[-2] + aead[-1] * 4294967296
     aad_padded_len = ceil(aad_len / 16) * 4
     ciphertext_padded_len = ceil(ciphertext_len / 16) * 4
-    if aead.len != aad_padded_len + ciphertext_padded_len + 4 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitAEAD", "length_mismatch")
+    if aead.len != aad_padded_len + ciphertext_padded_len + 4 then return Error("ChaCha20Poly1305.splitAEAD", "length_mismatch")
     aad = aead[:ceil(aad_len/4)]
     ciphertext = aead[aad_padded_len : aad_padded_len + ceil(ciphertext_len/4)]
     return [aad, aad_len, ciphertext, ciphertext_len]
@@ -419,8 +431,8 @@ end function
 // @description The tag is a list of 4 32-bit integers, the nonce is a list of 3 32-bit integers, and the aead is a list of 32-bit integers of any length.
 // @param {list<number>} aead - a list of 32-bit integers
 // @returns {list | error}    - if not an error, it returns [tag, nonce, aead] -> [list<number>, list<number>, list<number>]
-minicrypt.ChaCha20Poly1305.splitMessage = function(msg)
-    if msg.len < 11 or msg.len % 4 != 3 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.splitMessage", "malformed_msg")
+ChaCha20Poly1305.splitMessage = function(msg)
+    if msg.len < 11 or msg.len % 4 != 3 then return Error("ChaCha20Poly1305.splitMessage", "malformed_msg")
     return [msg[:4], msg[4:7], msg[7:]]
 end function
 
@@ -434,11 +446,11 @@ end function
 // @param {list<number>} plaintext     - a list of 32-bit integers, any size
 // @param {number}       plaintext_len - the length of 'plaintext' in bytes
 // @returns {list}                     - [aead, tag] -> [list<number>, list<number>]
-minicrypt.ChaCha20Poly1305.encryptRaw = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
-    otk = minicrypt.ChaCha20Poly1305.keygen(key, nonce)
-    ciphertext = minicrypt.ChaCha20.chacha(key, nonce, plaintext, plaintext_len, 1)
-    aead = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
-    tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
+ChaCha20Poly1305.encryptRaw = function(key, nonce, aad, aad_len, plaintext, plaintext_len)
+    otk = ChaCha20Poly1305.keygen(key, nonce)
+    ciphertext = ChaCha20.chacha(key, nonce, plaintext, plaintext_len, 1)
+    aead = ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, plaintext_len)
+    tag = Poly1305.macRaw(otk, aead, aead.len * 4)
     return [aead, tag]
 end function
 
@@ -449,14 +461,14 @@ end function
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
 // @returns {list | error}             - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number] or an error
-minicrypt.ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
-    res = minicrypt.ChaCha20Poly1305.splitAEAD(aead)
+ChaCha20Poly1305.decryptRaw = function(key, nonce, aead)
+    res = ChaCha20Poly1305.splitAEAD(aead)
     if typeof(res) == "error" then return res
     aad = res[0]
     aad_len = res[1]
     ciphertext = res[2]
     ciphertext_len = res[3]
-    plaintext = minicrypt.ChaCha20.chacha(key, nonce, ciphertext, ciphertext_len, 1)
+    plaintext = ChaCha20.chacha(key, nonce, ciphertext, ciphertext_len, 1)
     return [aad, aad_len, plaintext, ciphertext_len]
 end function
 
@@ -467,9 +479,9 @@ end function
 // @param {list<number>} nonce         - a list of 3 32-bit integers
 // @param {list<number>} aad           - a list of 32-bit integers, any size
 // @returns {list}                     - [aad, aad_len, plaintext, plaintext_len] -> [list<number>, number, list<number>, number]
-minicrypt.ChaCha20Poly1305.verifyRaw = function(key, tag, nonce, aead)
-    otk = minicrypt.ChaCha20Poly1305.keygen(key, nonce)
-    actual_tag = minicrypt.Poly1305.macRaw(otk, aead, aead.len * 4)
+ChaCha20Poly1305.verifyRaw = function(key, tag, nonce, aead)
+    otk = ChaCha20Poly1305.keygen(key, nonce)
+    actual_tag = Poly1305.macRaw(otk, aead, aead.len * 4)
     return actual_tag == tag
 end function
 
@@ -484,17 +496,17 @@ end function
 // @param {list<number>}     [nonce]                - (optional) If left as null, it generates a safe, synthetic nonce. If you set this manually, DO NOT EVER reuse the same key/nonce pair for another message
 // @returns {string | error}                        - The encryped message with some metadata for decryption: the byte length is the plaintext byte length + 20 bytes. The default format is base64. If something goes wrong, it returns an error object {"classID": "error"} instead.
 // @example ChaCha20Poly1305.encrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "You can look but ya can't touch", "Secrets secrets...")
-minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
-    pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintext_encoding = "16bit", ciphertext_encoding = "base64", nonce = null)
+    pe = Encode.getEncoding(plaintext_encoding)
+    if pe == null then return Error("ChaCha20Poly1305.encrypt", "unsupported_encoding")
     encoder = pe[0]
 
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "unsupported_encoding")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha20Poly1305.encrypt", "unsupported_encoding")
     decoder = ce[1]
 
-    if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.encrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("ChaCha20Poly1305.encrypt", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     enc = encoder(aad)
@@ -507,10 +519,10 @@ minicrypt.ChaCha20Poly1305.encrypt = function(key, plaintext, aad = "", plaintex
     plaintext_enc = enc[0]
     plaintext_len_bytes = enc[1]
 
-    if typeof(nonce) == "string" then nonce = minicrypt.Encode.encodeHex(nonce)[0]
-    if nonce == null then nonce = minicrypt.ChaCha20.getHedgedNonce(aad_enc + plaintext_enc)
+    if typeof(nonce) == "string" then nonce = Encode.encodeHex(nonce)[0]
+    if nonce == null then nonce = ChaCha20.getHedgedNonce(aad_enc + plaintext_enc)
     
-    enc = minicrypt.ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
+    enc = ChaCha20Poly1305.encryptRaw(key_enc, nonce, 
                                       aad_enc, aad_len_bytes, 
                                       plaintext_enc, plaintext_len_bytes)
     if typeof(enc) == "error" then return enc
@@ -529,24 +541,24 @@ end function
 // @returns {list | error}                          - [plaintext, aad] -> [string, string] or an error if any verification of decryption step failed
 // @example ChaCha20Poly1305.decrypt("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
 // @example > ["Secrets secrets...", "You can look but ya can't touch"]
-minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
+ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha20Poly1305.decrypt", "unsupported_encoding")
     encoder = ce[0]
 
-    pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "unsupported_encoding")
+    pe = Encode.getEncoding(plaintext_encoding)
+    if pe == null then return Error("ChaCha20Poly1305.decrypt", "unsupported_encoding")
     decoder = pe[1]
 
-    if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("ChaCha20Poly1305.decrypt", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
 
     res = encoder(ciphertext)
     if typeof(res) == "error" then return res
     ciphertext_enc = res[0]
 
-    res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
+    res = ChaCha20Poly1305.splitMessage(ciphertext_enc)
     if typeof(res) == "error" then return res
 
     tag_enc = res[0]
@@ -554,11 +566,11 @@ minicrypt.ChaCha20Poly1305.decrypt = function(key, ciphertext, do_verify = true,
     aead_enc = res[2]
 
     if do_verify then
-        verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
-        if not verify then return minicrypt.Error("minicrypt.ChaCha20Poly1305.decrypt", "verification_failed")
+        verify = ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
+        if not verify then return Error("ChaCha20Poly1305.decrypt", "verification_failed")
     end if
 
-    enc = minicrypt.ChaCha20Poly1305.decryptRaw(key_enc, nonce_enc, aead_enc)
+    enc = ChaCha20Poly1305.decryptRaw(key_enc, nonce_enc, aead_enc)
     if typeof(enc) == "error" then return enc
 
     aad_enc = enc[0]
@@ -581,27 +593,27 @@ end function
 // @returns {number | error}                        - boolean, or error if ciphertext_encoding is not supported
 // @example ChaCha20Poly1305.verify("fe46e801a7d3426fe3ee0dbb0eeb7df4173eff4b9fdd9dc7aa817cddc323f77a", "CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
 // @example > true
-minicrypt.ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encoding = "base64")
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "unsupported_encoding")
+ChaCha20Poly1305.verify = function(key, ciphertext, ciphertext_encoding = "base64")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha20Poly1305.verify", "unsupported_encoding")
     encoder = ce[0]
 
-    if key.len != 64 then return minicrypt.Error("minicrypt.ChaCha20Poly1305.verify", "incorrect_key_length")
-    key_enc = minicrypt.Encode.encodeHex(key)[0]
+    if key.len != 64 then return Error("ChaCha20Poly1305.verify", "incorrect_key_length")
+    key_enc = Encode.encodeHex(key)[0]
     if typeof(key_enc) == "error" then return key_enc
     
     res = encoder(ciphertext)
     if typeof(res) == "error" then return false
     ciphertext_enc = res[0]
 
-    res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
+    res = ChaCha20Poly1305.splitMessage(ciphertext_enc)
     if typeof(res) == "error" then return false
 
     tag_enc = res[0]
     nonce_enc = res[1]
     aead_enc = res[2]
 
-    verify = minicrypt.ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
+    verify = ChaCha20Poly1305.verifyRaw(key_enc, tag_enc, nonce_enc, aead_enc)
     if typeof(verify) == "error" then return false
     return verify
 end function
@@ -613,24 +625,24 @@ end function
 // @returns {string | error}                        - The AAD in plaintext, or an error if the ciphertext is not well-formed
 // @example ChaCha20Poly1305.getAAD("CGRP3BOFU+7MPeny/qLfOL2l73AdkjTzBzgpXlkAbwB1ACAAYwBhAG4AIABsAG8AbwBrACAAYgB1AHQAIAB5AGEAIABjAGEAbgAnAHQAIAB0AG8AdQBjAGgAAAAAAAAAAAAAAAAAAAAAAAAAKuxmZRS64jm2RFJIm5oGUi9SHu2nzMu1NoHZZtv5KYU0QrUdAAAAAAAAAAAAAAAAPgAAAAAAAAAkAAAAAAAAAA==")
 // @example > "You can look but ya can't touch"
-minicrypt.ChaCha20Poly1305.getAAD = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
-    ce = minicrypt.Encode.getEncoding(ciphertext_encoding)
-    if ce == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
+ChaCha20Poly1305.getAAD = function(ciphertext, plaintext_encoding = "16bit", ciphertext_encoding = "base64")
+    ce = Encode.getEncoding(ciphertext_encoding)
+    if ce == null then return Error("ChaCha20Poly1305.getAAD", "unsupported_encoding")
     encoder = ce[0]
 
-    pe = minicrypt.Encode.getEncoding(plaintext_encoding)
-    if pe == null then return minicrypt.Error("minicrypt.ChaCha20Poly1305.getAAD", "unsupported_encoding")
+    pe = Encode.getEncoding(plaintext_encoding)
+    if pe == null then return Error("ChaCha20Poly1305.getAAD", "unsupported_encoding")
     decoder = pe[1]
 
     res = encoder(ciphertext)
     if typeof(res) == "error" then return res
     ciphertext_enc = res[0]
 
-    res = minicrypt.ChaCha20Poly1305.splitMessage(ciphertext_enc)
+    res = ChaCha20Poly1305.splitMessage(ciphertext_enc)
     if typeof(res) == "error" then return res
     aead_enc = res[2]
 
-    res = minicrypt.ChaCha20Poly1305.splitAEAD(aead_enc)
+    res = ChaCha20Poly1305.splitAEAD(aead_enc)
     if typeof(res) == "error" then return res
 
     aad_enc = res[0]

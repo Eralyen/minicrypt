@@ -15,29 +15,31 @@ BLAKE3 = minicrypt.BLAKE3
 ChaCha8 = minicrypt.ChaCha
 Poly1305 = minicrypt.Poly1305
 ChaCha8Poly1305 = minicrypt.ChaCha8Poly1305
+Encode = minicrypt.Encode
 Random = minicrypt.Random
 Error = @minicrypt.Error
 
 minicrypt.BOX_KEYLEN = 32
 minicrypt.SECRETBOX_KEYLEN = 32
 minicrypt.AUTH_KEYLEN = 32
+minicrypt.NONCE_LEN = 12
 
 minicrypt.box_keypair = function
     KEYLEN = minicrypt.BOX_KEYLEN
     sk = minicrypt.rand_stream(KEYLEN)[1]
-    pk = [0] * KEYLEN
+    pk = [0] * (KEYLEN / 4)
     // 1073741824 = 2^30. Discards top 2 bits and set the second highest bit
     sk[-1] = sk[-1] % 1073741824 + 1073741824
     // Discards bottom 3 bits
     sk[0] = sk[0] - sk[0] % 8
     sk_16 = []
-    pk_16 = [0] * KEYLEN * 2
+    pk_16 = [0] * (KEYLEN / 2)
     for w in sk
         low = w % 65536
         sk_16 = sk_16 + [low, (w-low) / 65536]
     end for
     X25519.scalarMult(pk_16, sk_16, X25519.G)
-    for i in range(0, KEYLEN-1)
+    for i in range(0, (KEYLEN/4)-1)
         pk[i] = pk_16[i*2] + pk_16[i*2+1] * 65536
     end for
     return [[KEYLEN, pk], [KEYLEN, sk]]
@@ -50,8 +52,6 @@ end function
 minicrypt.secretbox_key = function
     return minicrypt.rand_stream(minicrypt.SECRETBOX_KEYLEN)
 end function
-
-// TODO: BLAKE3 key derivation function
 
 // TODO: X25519 key blinding
 
@@ -70,15 +70,52 @@ end function
 // ==== PUBLIC KEY ENCRYPTION ====
 
 // Curve25519ChaCha8Poly1305
-minicrypt.box = function(message, nonce, pubkey, privkey)
+minicrypt.box_session_key = function(pubkey, privkey)
+    pk = Encode.b32tob16(pubkey[1], 32)
+    sk = Encode.b32tob16(privkey[1], 32)
+    sesskey = [0] * 16
+    X25519.scalarMult(sesskey, sk, pk)
+    return [32, Encode.b16tob32(sesskey, 32)]
 end function
-minicrypt.box_open = function(box, nonce, pubkey, privkey)
+
+minicrypt.box = function(message, nonce, pubkey, privkey = null)
+    if privkey != null then
+        sesskey = minicrypt.box_session_key(pubkey, privkey)
+    else
+        sesskey = pubkey[:]
+    end if
+    return minicrypt.secretbox(message, nonce, sesskey)
 end function
-minicrypt.box_labeled = function(message, label, nonce, pubkey, privkey)
+
+minicrypt.box_open = function(box, nonce, pubkey, privkey = null)
+    if privkey != null then
+        sesskey = minicrypt.box_session_key(pubkey, privkey)
+    else
+        sesskey = pubkey[:]
+    end if
+    return minicrypt.secretbox_open(box, nonce, sesskey)
 end function
+
+minicrypt.box_labeled = function(message, label, nonce, pubkey, privkey = null)
+    if privkey != null then
+        sesskey = minicrypt.box_session_key(pubkey, privkey)
+    else
+        sesskey = pubkey[:]
+    end if
+    return minicrypt.secretbox_labeled(message, label, nonce, sesskey)
+end function
+
 minicrypt.box_labeled_read = function(box)
+    return minicrypt.secretbox_labeled_read(box)
 end function
-minicrypt.box_labeled_open = function(box, nonce, pubkey, privkey)
+
+minicrypt.box_labeled_open = function(box, nonce, pubkey, privkey = null)
+    if privkey != null then
+        sesskey = minicrypt.box_session_key(pubkey, privkey)
+    else
+        sesskey = pubkey[:]
+    end if
+    return minicrypt.secretbox_labeled_open(box, nonce, sesskey)
 end function
 
 
@@ -122,7 +159,8 @@ minicrypt.secretbox_labeled_open = function(secretbox, nonce, key)
     tag = res[1]
     auth = ChaCha8Poly1305.verify(key[1], tag[1], nonce[1], aead[1])
     if not auth then return Error("minicrypt.secretbox_labeled_open", "verification_failed")
-    return ChaCha8Poly1305.decrypt(key[1], nonce[1], aead[1])
+    decrypted = ChaCha8Poly1305.decrypt(key[1], nonce[1], aead[1])
+    return [decrypted[3], decrypted[2]]
 end function
 
 // ChaCha8 keystream
@@ -217,6 +255,12 @@ minicrypt.rand_stream = function(out_len)
     return [out_len, w]
 end function
 
+// Returns as many random bytes as necessary for a box nonce: minicrypt.NONCE_LEN bytes
+// @returns {list<number>}
+minicrypt.rand_nonce = function
+    return minicrypt.rand_stream(minicrypt.NONCE_LEN)
+end function
+
 // Halts execution for the specified amount of time (default 1 second). Uses this time to harvest entropy and pregenerate a random stream. Configurable through minicrypt.Random.MAX_PREGEN_ENTROPY and minicrypt.Random.MAX_PREGEN_STREAM
 // Not as precise as the wait intrinsic.
 // @param {number} [seconds] - (optional) How long to wait in seconds. Can be a floating point number
@@ -294,13 +338,3 @@ end function
 end function // END OF SCOPE
 __scope()
 globals.remove("__scope")
-
-
-// ==== EXAMPLE USAGE ====
-// key = minicrypt.fromHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")
-// plain = minicrypt.from8bitString("Plaintext")
-// msg = minicrypt.from16bitString("arbitrary string")
-// sbox = minicrypt.secretbox_labeled(msg, plain, 0, key)
-// minicrypt.attach_nonce(sbox, 0)
-// nonce = minicrypt.detach_nonce(sbox)
-// msg2 = minicrypt.secretbox_labeled_open(sbox, nonce, key)

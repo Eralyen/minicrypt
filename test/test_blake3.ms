@@ -229,7 +229,6 @@ INPUT = ""
 for i in range(0, 102400)
     INPUT = INPUT + minicrypt.Encode.BYTE2HEX[i % 251]
 end for
-//INPUT = minicrypt.Encode.encodeHex(INPUT)[0]
 
 KEY = tests.key
 CONTEXT = tests.context_string
@@ -237,9 +236,11 @@ CONTEXT = tests.context_string
 
 blake3Hash = function
     for case in tests.cases
-		input = INPUT[:case.input_len*2]
-		hash = minicrypt.BLAKE3.hash(input, 32, "hex")
-		hash_ext = minicrypt.BLAKE3.hash(input, case.hash.len/2, "hex")
+		hs = minicrypt.BLAKE3.startHash
+		input = minicrypt.Encode.encodeHex(INPUT[:case.input_len*2])[1]
+		minicrypt.BLAKE3.updateHash(hs, input, case.input_len)
+		hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs))
+		hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs, ceil(case.hash.len/8)), case.hash.len/2)
         expectEqual(hash, case.hash[:64], "Hash of input length " + case.input_len)
         expectEqual(hash_ext, case.hash, "Extended hash of input length " + case.input_len)
     end for
@@ -247,10 +248,13 @@ end function
 TEST "BLAKE3 - Hash", @blake3Hash
 
 blake3KeyedHash = function
+	key = minicrypt.Encode.encodeText8(KEY)[1]
     for case in tests.cases
-		input = INPUT[:case.input_len*2]
-		hash = minicrypt.BLAKE3.keyedHash(KEY, input, 32, "hex", "8bit")
-		hash_ext = minicrypt.BLAKE3.keyedHash(KEY, input, case.keyed_hash.len/2, "hex", "8bit")
+		hs = minicrypt.BLAKE3.startKeyedHash(key)
+		input = minicrypt.Encode.encodeHex(INPUT[:case.input_len*2])[1]
+		minicrypt.BLAKE3.updateHash(hs, input, case.input_len)
+		hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs))
+		hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs, ceil(case.hash.len/8)), case.hash.len/2)
         expectEqual(hash, case.keyed_hash[:64], "Keyed hash of input length " + case.input_len)
         expectEqual(hash_ext, case.keyed_hash, "Extended keyed hash of input length " + case.input_len)
     end for
@@ -258,10 +262,13 @@ end function
 TEST "BLAKE3 - Keyed Hash", @blake3KeyedHash
 
 blake3KeyDerivation = function
+	context = minicrypt.Encode.encodeText8(CONTEXT)
     for case in tests.cases
-		input = INPUT[:case.input_len*2]
-		hash = minicrypt.BLAKE3.deriveKey(input, CONTEXT, 32, "hex", "8bit")
-		hash_ext = minicrypt.BLAKE3.deriveKey(input, CONTEXT, case.derive_key.len/2, "hex", "8bit")
+		input = minicrypt.Encode.encodeHex(INPUT[:case.input_len*2])[1]
+		hs = minicrypt.BLAKE3.startDeriveKey(context[1], context[0])
+		minicrypt.BLAKE3.updateHash(hs, input, case.input_len)
+		hash = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs))
+		hash_ext = minicrypt.Encode.decodeHex(minicrypt.BLAKE3.finalizeHash(hs, ceil(case.hash.len/8)), case.hash.len/2)
         expectEqual(hash, case.derive_key[:64], "Key of input length " + case.input_len)
         expectEqual(hash_ext, case.derive_key, "Extended key of input length " + case.input_len)
     end for

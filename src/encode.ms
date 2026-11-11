@@ -24,6 +24,51 @@ Encode.BYTE2HEX = ["00","01","02","03","04","05","06","07","08","09","0a","0b","
 
 Encode.POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496]
 
+// Turns a list of 16-bit integers into a list of 32-bit integers, little endian
+// @param {list<number>} b16      - a list of 16-bit integers
+// @param {number}       byte_len - the length of b16 in bytes
+// @returns {list<number}         - a list of 32-bit integers
+Encode.b16tob32 = function(b16, byte_len)
+    if byte_len == 0 then return []
+    r = byte_len % 4
+    w_len = (byte_len - r) / 4 + (r > 0)
+    b32 = [0] * w_len
+    for i in range(0, w_len-1)
+        j = i * 2
+        if i < w_len-1 or (byte_len + 1) % 4 < 2 then
+            b32[i] = b16[j] % 65536 + (b16[j+1] % 65536) * 65536
+        else
+            b32[i] = b16[j] % 65536
+        end if
+    end for
+    if r == 1 then
+        b32[-1] = b32[-1] % 256
+    else if r == 3 then
+        b32[-1] = b32[-1] % 16777216
+    end if
+    return b32
+end function
+
+// Turns a list of 32-bit integers into a list of 16-bit integers, little endian
+// @param {list<number>} b32      - a list of 32-bit integers
+// @param {number}       byte_len - the length of b32 in bytes
+// @returns {list<number}         - a list of 16-bit integers
+Encode.b32tob16 = function(b32, byte_len)
+    if byte_len == 0 then return []
+    r = byte_len % 4
+    w_len = (byte_len - r) / 4 + (r > 0)
+    h_len = (byte_len + byte_len % 2) / 2
+    b16 = [0] * h_len
+    for i in range(0, w_len-1)
+        j = i * 2
+        b16[j] = b32[i] % 65536
+        if i < w_len-1 or h_len % 2 == 0 then
+            b16[j+1] = (b32[i] - b16[j]) / 65536
+        end if
+    end for
+    if byte_len % 2 == 1 then b16[-1] = b16[-1] % 256
+    return b16
+end function
 
 // Takes a string and returns a list of 32-bit numbers. 16 bits per character, the default Grey Hack string encoding. Returns [output, byte_len]
 // @param {string} text - any string

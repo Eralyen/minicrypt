@@ -126,16 +126,14 @@ minicrypt.secretbox = function(message, nonce, key)
     ciphertext = ChaCha8Poly1305.encrypt(key[1], nonce[1], [], 0, message[1], message[0])
     secretbox = [ciphertext[0].len * 4, ciphertext[0]]
     tag = [16, ciphertext[1]]
-    secretbox = minicrypt.tag(secretbox, tag)
+    minicrypt.tag(secretbox, tag)
     return secretbox
 end function
 minicrypt.secretbox_open = function(secretbox, nonce, key)
-    res = minicrypt.untag(secretbox, 16)
-    aead = res[0]
-    tag = res[1]
-    auth = ChaCha8Poly1305.verify(key[1], tag[1], nonce[1], aead[1])
+    tag = minicrypt.untag(secretbox, 16)
+    auth = ChaCha8Poly1305.verify(key[1], tag[1], nonce[1], secretbox[1])
     if not auth then return Error("minicrypt.secretbox_open", "verification_failed")
-    return ChaCha8Poly1305.decrypt(key[1], nonce[1], aead[1])
+    return ChaCha8Poly1305.decrypt(key[1], nonce[1], secretbox[1])
 end function
 
 // ChaCha8-Poly1305 (AEAD)
@@ -143,23 +141,22 @@ minicrypt.secretbox_labeled = function(message, label, nonce, key)
     ciphertext = ChaCha8Poly1305.encrypt(key[1], nonce[1], label[1], label[0], message[1], message[0])
     secretbox = [ciphertext[0].len * 4, ciphertext[0]]
     tag = [16, ciphertext[1]]
-    secretbox = minicrypt.tag(secretbox, tag)
+    minicrypt.tag(secretbox, tag)
     return secretbox
 end function
 
 minicrypt.secretbox_labeled_read = function(secretbox)
-    aead = minicrypt.untag(secretbox, 16)[0]
-    res = ChaCha8Poly1305.splitAEAD(aead[1])
+    copy_box = [secretbox[0], secretbox[1][:]]
+    minicrypt.untag(copy_box, 16)
+    res = ChaCha8Poly1305.splitAEAD(copy_box[1])
     return [res[1], res[0]]
 end function
 
 minicrypt.secretbox_labeled_open = function(secretbox, nonce, key)
-    res = minicrypt.untag(secretbox, 16)
-    aead = res[0]
-    tag = res[1]
-    auth = ChaCha8Poly1305.verify(key[1], tag[1], nonce[1], aead[1])
+    tag = minicrypt.untag(secretbox, 16)
+    auth = ChaCha8Poly1305.verify(key[1], tag[1], nonce[1], secretbox[1])
     if not auth then return Error("minicrypt.secretbox_labeled_open", "verification_failed")
-    decrypted = ChaCha8Poly1305.decrypt(key[1], nonce[1], aead[1])
+    decrypted = ChaCha8Poly1305.decrypt(key[1], nonce[1], secretbox[1])
     return [decrypted[3], decrypted[2]]
 end function
 
@@ -290,12 +287,13 @@ minicrypt.tag = function(data, tag)
     shift = data[0] % 4
     scale = p[shift]
     div = p[4 - shift]
-    output = data[1][:]
+    output = data[1]
     if shift > 0 then output[-1] = output[-1] % scale
     wr = length % 4
     words = (length - wr) / 4 + (wr > 0)
     data_words = (data[0] - shift) / 4
     output = output + [0] * (words - data_words - (shift > 0))
+    data[1] = output
     for i in range(0, tag[1].len - 1)
         w = tag[1][i]
         index = data_words + i
@@ -303,21 +301,20 @@ minicrypt.tag = function(data, tag)
         if index + 1 < words then output[index + 1] = output[index + 1] + ((w - w % div) / div)
     end for
     if wr > 0 then output[-1] = output[-1] % p[wr]
-    return [length, output]
+    data[0] = length
 end function
 
 minicrypt.untag = function(data, tag_length)
     if tag_length < 0 or tag_length > data[0] then return Error("minicrypt.untag", "invalid_tag_length")
+    if tag_length == 0 then return [0, []]
     data_length = data[0] - tag_length
     data_remainder = data_length % 4
     data_words = (data_length - data_remainder) / 4 + (data_remainder > 0)
     tag_start = (data_length - data_remainder) / 4
     tag_remainder = tag_length % 4
     tag_words = (tag_length - tag_remainder) / 4 + (tag_remainder > 0)
-    if tag_length == 0 then return [data, [0, []]]
-    output = [data[1][:data_words], []]
+    tag = []
     p = [1, 256, 65536, 16777216, 4294967296]
-    if data_remainder > 0 then output[0][-1] = output[0][-1] % p[data_remainder]
     shift = data_remainder
     scale = p[shift]
     div = p[4 - shift]
@@ -329,10 +326,15 @@ minicrypt.untag = function(data, tag_length)
         if shift > 0 and index + 1 < total_words then
             value = value + (data[1][index + 1] % scale) * div
         end if
-        output[1].push(value)
+        tag.push(value)
     end for
-    if tag_remainder > 0 then output[1][-1] = output[1][-1] % p[tag_remainder]
-    return [[data_length, output[0]], [tag_length, output[1]]]
+    if tag_remainder > 0 then tag[-1] = tag[-1] % p[tag_remainder]
+    while data[1].len > data_words
+        data[1].pop
+    end while
+    if data_remainder > 0 then data[1][-1] = data[1][-1] % p[data_remainder]
+    data[0] = data_length
+    return [tag_length, tag]
 end function
 
 end function // END OF SCOPE

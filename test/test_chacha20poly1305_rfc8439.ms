@@ -95,17 +95,17 @@ test_rfc8439_chacha_core = function
     plaintext = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
 
     plaintext_encoded = minicrypt.Encode.encodeText8(plaintext)
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
-    deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext_encoded[1], counter, 20)
-    expectEqual(ciphertext.len, ceil(plaintext_encoded[1] / 4), "Ciphertext length")
-    expectEqual(deciphered, plaintext_encoded[0])
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[1], plaintext_encoded[0], counter, 20)
+    deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext_encoded[0], counter, 20)
+    expectEqual(ciphertext.len, ceil(plaintext_encoded[0] / 4), "Ciphertext length")
+    expectEqual(deciphered, plaintext_encoded[1])
 end function
 TEST "RFC 8439 - ChaCha core vectors", @test_rfc8439_chacha_core
 
 // https://www.rfc-editor.org/info/rfc8439/#section-2.5.2
 test_rfc8439_authentication = function
     key = minicrypt.Encode.hexBytesToB32("85:d6:be:78:57:55:6d:33:7f:44:52:fe:42:d5:06:a8:01:03:80:8a:fb:0d:b2:fd:4a:bf:f6:af:41:49:f5:1b")
-    msg = minicrypt.Encode.encodeText8("Cryptographic Forum Research Group")[0]
+    msg = minicrypt.Encode.encodeText8("Cryptographic Forum Research Group")[1]
     tag = minicrypt.Encode.hexBytesToB32("a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9")
     expectEqual(minicrypt.Poly1305.mac(key, msg, 34), tag)
 
@@ -115,7 +115,7 @@ test_rfc8439_authentication = function
     expected = minicrypt.Encode.hexBytesToB32("8a:d5:a0:8b:90:5f:81:cc:81:50:40:27:4a:b2:94:71:a8:33:b6:37:e3:fd:0d:a5:08:db:b8:e2:fd:d1:a6:46")
     expectEqual(minicrypt.ChaCha20Poly1305.keygen(key, nonce), expected)
 // https://www.rfc-editor.org/info/rfc8439/#section-2.8.2
-    plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[0]
+    plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[1]
     plaintext_len = 114
     aad = minicrypt.Encode.hexBytesToB32("50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7")
     aad_len = 12
@@ -281,7 +281,7 @@ test_rfc8439_additional_vectors = function
     for c in ciphertext_expected
         ciphertext_expected_b32 = ciphertext_expected_b32 + minicrypt.Encode.hexBytesToB32(c)
     end for
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[1], plaintext_encoded[0], counter, 20)
     expectEqual(ciphertext, ciphertext_expected_b32, "Test Vector #2")
 
     // TEST VECTOR #3
@@ -308,7 +308,7 @@ test_rfc8439_additional_vectors = function
     for c in ciphertext_expected
         ciphertext_expected_b32 = ciphertext_expected_b32 + minicrypt.Encode.hexBytesToB32(c)
     end for
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[0], plaintext_encoded[1], counter, 20)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext_encoded[1], plaintext_encoded[0], counter, 20)
     expectEqual(ciphertext, ciphertext_expected_b32, "Test Vector #3")
 // https://www.rfc-editor.org/info/rfc8439/#appendix-A.3
     check = function(key, msg, byte_count, tag, note)
@@ -340,8 +340,8 @@ test_rfc8439_additional_vectors = function
     s_hex = "36:e5:f6:b5:c5:e0:60:70:f0:ef:ca:96:22:7a:86:3e"
     s = minicrypt.Encode.hexBytesToB32(s_hex)
     key = r + s
-    data = long_msg[0]
-    data_byte_count = long_msg[1]
+    data = long_msg[1]
+    data_byte_count = long_msg[0]
     expected_tag = s_hex
     check(key, data, data_byte_count, expected_tag, "Test Vector #2")
 
@@ -349,8 +349,8 @@ test_rfc8439_additional_vectors = function
     r = minicrypt.Encode.hexBytesToB32(s_hex)
     s = [0] * 4
     key = r + s
-    data = long_msg[0]
-    data_byte_count = long_msg[1]
+    data = long_msg[1]
+    data_byte_count = long_msg[0]
     expected_tag = "f3:47:7e:7c:d9:54:17:af:89:a6:b8:79:4c:31:0c:f0"
     check(key, data, data_byte_count, expected_tag, "Test Vector #3")
 
@@ -361,8 +361,8 @@ test_rfc8439_additional_vectors = function
            "And the mome raths outgrabe."
     poem_msg = minicrypt.Encode.encodeText8(poem)
     key = minicrypt.Encode.hexBytesToB32("1c:92:40:a5:eb:55:d3:8a:f3:33:88:86:04:f6:b5:f0:47:39:17:c1:40:2b:80:09:9d:ca:5c:bc:20:70:75:c0")
-    data = poem_msg[0]
-    data_byte_count = poem_msg[1]
+    data = poem_msg[1]
+    data_byte_count = poem_msg[0]
     expected_tag = "45:41:66:9a:7e:aa:ee:61:e7:08:dc:7c:bc:c5:eb:62"
     check(key, data, data_byte_count, expected_tag, "Test Vector #4")
 

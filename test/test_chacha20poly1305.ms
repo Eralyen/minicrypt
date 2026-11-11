@@ -15,12 +15,12 @@ test_chacha20poly1305 = function
     ]
 
     for plaintext in plaintexts
-        ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext[0], plaintext[1], counter)
-        deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext[1], counter)
-        expectEqual(ciphertext.len, ceil(plaintext[1] / 4), "Ciphertext word count")
-        expectEqual(deciphered, plaintext[0], "Successive encryption and decryption")
+        ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext[1], plaintext[0], counter)
+        deciphered = minicrypt.ChaCha.chacha(key, nonce, ciphertext, plaintext[0], counter)
+        expectEqual(ciphertext.len, ceil(plaintext[0] / 4), "Ciphertext word count")
+        expectEqual(deciphered, plaintext[1], "Successive encryption and decryption")
     end for
-    plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[0]
+    plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")[1]
     plaintext_len = 114
     aad = minicrypt.Encode.hexBytesToB32("50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7")
     aad_len = 12
@@ -51,8 +51,8 @@ test_chacha20poly1305 = function
     lengths = [0, 1, 3, 4, 15, 16, 17]
     for aad_len in lengths
         for ciphertext_len in lengths
-            aad = minicrypt.Encode.encodeText8("a" * aad_len)[0]
-            ciphertext = minicrypt.Encode.encodeText8("c" * ciphertext_len)[0]
+            aad = minicrypt.Encode.encodeText8("a" * aad_len)[1]
+            ciphertext = minicrypt.Encode.encodeText8("c" * ciphertext_len)[1]
             aead = minicrypt.ChaCha20Poly1305.AEAD(aad, aad_len, ciphertext, ciphertext_len)
             expected_aead_len = ceil(aad_len / 16) * 4 + ceil(ciphertext_len / 16) * 4 + 4
             expectEqual(aead.len, expected_aead_len, "Padded AEAD length")
@@ -69,21 +69,21 @@ test_chacha20poly1305 = function
     
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([])), "error", "Reject short AEAD")
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.splitAEAD([0, 0, 0])), "error", "Reject unpadded AEAD")
-    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[1]
     nonce = [1, 2, 3]
     aad = minicrypt.Encode.encodeText16("A" + char(0) + char(233))
     plaintext = minicrypt.Encode.encodeText16("B" + char(0) + char(233) + char(65535))
 
-    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
     aead = result[0]
     tag = result[1]
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, tag, nonce, aead), "AEAD authenticates")
 
     decrypted = minicrypt.ChaCha20Poly1305.decrypt(key, nonce, aead)
-    expectEqual(decrypted[0], aad[0], "Decryption recovers AAD")
-    expectEqual(decrypted[1], aad[1], "Decryption recovers AAD byte count")
-    expectEqual(decrypted[2], plaintext[0], "Decryption recovers plaintext")
-    expectEqual(decrypted[3], plaintext[1], "Decryption recovers plaintext byte count")
+    expectEqual(decrypted[0], aad[1], "Decryption recovers AAD")
+    expectEqual(decrypted[1], aad[0], "Decryption recovers AAD byte count")
+    expectEqual(decrypted[2], plaintext[1], "Decryption recovers plaintext")
+    expectEqual(decrypted[3], plaintext[0], "Decryption recovers plaintext byte count")
 
     tampered_aead = aead[:]
     tampered_aead[0] = tampered_aead[0] + 1
@@ -92,24 +92,24 @@ test_chacha20poly1305 = function
     tampered_tag = tag[:]
     tampered_tag[0] = (tampered_tag[0] + 1) % 4294967296
     expectFalse(minicrypt.ChaCha20Poly1305.verify(key, tampered_tag, nonce, aead), "Reject changed authentication tag")
-    wrong_key = minicrypt.Encode.encodeHex("0000000000000000000000000000000000000000000000000000000000000000")[0]
+    wrong_key = minicrypt.Encode.encodeHex("0000000000000000000000000000000000000000000000000000000000000000")[1]
     expectFalse(minicrypt.ChaCha20Poly1305.verify(wrong_key, tag, nonce, aead), "Reject wrong key")
 
     plaintext = minicrypt.Encode.encodeText8("8-bit plaintext")
-    result = minicrypt.ChaCha20Poly1305.encrypt(key, [4, 5, 6], [], 0, plaintext[0], plaintext[1])
+    result = minicrypt.ChaCha20Poly1305.encrypt(key, [4, 5, 6], [], 0, plaintext[1], plaintext[0])
     decrypted = minicrypt.ChaCha20Poly1305.decrypt(key, [4, 5, 6], result[0])
     expectEqual(decrypted[0], [], "Empty AAD round trip")
-    expectEqual(decrypted[2], plaintext[0], "8-bit plaintext round trip")
+    expectEqual(decrypted[2], plaintext[1], "8-bit plaintext round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, result[1], [4, 5, 6], result[0]), "8-bit message authenticates")
 
     for plaintext_len in [1, 15, 16, 17, 63, 64, 65]
         plaintext = minicrypt.Encode.encodeText8("x" * plaintext_len)
         aad = minicrypt.Encode.encodeText8("boundary")
         nonce = [plaintext_len, 10, 11]
-        result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+        result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
         decrypted = minicrypt.ChaCha20Poly1305.decrypt(key, nonce, result[0])
-        expectEqual(decrypted[0], aad[0], "AAD round trip at plaintext byte length " + str(plaintext_len))
-        expectEqual(decrypted[2], plaintext[0], "Plaintext round trip at byte length " + str(plaintext_len))
+        expectEqual(decrypted[0], aad[1], "AAD round trip at plaintext byte length " + str(plaintext_len))
+        expectEqual(decrypted[2], plaintext[1], "Plaintext round trip at byte length " + str(plaintext_len))
         expectTrue(minicrypt.ChaCha20Poly1305.verify(key, result[1], nonce, result[0]), "Authenticates plaintext byte length " + str(plaintext_len))
     end for
 
@@ -120,26 +120,26 @@ test_chacha20poly1305 = function
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, result[1], [7, 8, 9], result[0]), "Empty message authenticates")
     key = minicrypt.Encode.hexBytesToB32("85:d6:be:78:57:55:6d:33:7f:44:52:fe:42:d5:06:a8:01:03:80:8a:fb:0d:b2:fd:4a:bf:f6:af:41:49:f5:1b")
     message = minicrypt.Encode.encodeText8("Cryptographic Forum Research Group")
-    tag = minicrypt.Poly1305.mac(key, message[0], message[1])
+    tag = minicrypt.Poly1305.mac(key, message[1], message[0])
     expectEqual(tag.len, 4, "Poly1305 tag has four 32-bit words")
     expected = minicrypt.Encode.hexBytesToB32("a8:06:1d:c1:30:51:36:c6:c2:2b:8b:af:0c:01:27:a9")
     expectEqual(tag, expected, "RFC 8439 Poly1305 tag")
 
-    decoded_key = minicrypt.Encode.encodeHex("85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b")[0]
+    decoded_key = minicrypt.Encode.encodeHex("85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b")[1]
     expectEqual(decoded_key, key, "Hex key converts to a byte list")
-    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[1]
     nonce_hex = "010000000200000003000000"
-    nonce = minicrypt.Encode.encodeHex(nonce_hex)[0]
+    nonce = minicrypt.Encode.encodeHex(nonce_hex)[1]
     aad = minicrypt.Encode.encodeText8("custom aad")
     plaintext = minicrypt.Encode.encodeText8("custom encoded plaintext")
 
-    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
     decrypted = minicrypt.ChaCha20Poly1305.decrypt(key, nonce, result[0])
-    expectEqual(decrypted[0], aad[0], "AAD round trip")
-    expectEqual(decrypted[2], plaintext[0], "Plaintext round trip")
+    expectEqual(decrypted[0], aad[1], "AAD round trip")
+    expectEqual(decrypted[2], plaintext[1], "Plaintext round trip")
     expectTrue(minicrypt.ChaCha20Poly1305.verify(key, result[1], nonce, result[0]), "Message verifies")
-    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
-    plaintext = minicrypt.Encode.encodeText8("nonce source")[0]
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[1]
+    plaintext = minicrypt.Encode.encodeText8("nonce source")[1]
     nonce = minicrypt.ChaCha.getHedgedNonce(plaintext)
     expectEqual(nonce.len, 3, "Synthetic nonce has three words")
     for word in nonce
@@ -147,11 +147,11 @@ test_chacha20poly1305 = function
     end for
 
     expectEqual(typeof(minicrypt.ChaCha20Poly1305.decrypt(key, [1, 2, 3], [])), "error", "Propagate malformed AEAD from decrypt")
-    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[1]
     nonce = [1, 2, 3]
     aad = minicrypt.Encode.encodeText8("Visible text")
     plaintext = minicrypt.Encode.encodeText8("Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.")
-    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+    result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
     tag = result[1]
     aead = result[0]
 
@@ -176,37 +176,37 @@ end function
 TEST "CHACHA20-POLY1305", @test_chacha20poly1305
 
 test_chacha8poly1305 = function
-    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[0]
+    key = minicrypt.Encode.encodeHex("171a007b5321e458b8f74a802f71bbfa6c35a9443159191d9b7ba3944908367c")[1]
     nonce = [1, 2, 3]
     aad = minicrypt.Encode.encodeText8("ChaCha8 AAD")
     plaintext = minicrypt.Encode.encodeText8("ChaCha8 Poly1305 round-trip test")
 
-    chacha8_result = minicrypt.ChaCha8Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
-    chacha20_result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[0], aad[1], plaintext[0], plaintext[1])
+    chacha8_result = minicrypt.ChaCha8Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
+    chacha20_result = minicrypt.ChaCha20Poly1305.encrypt(key, nonce, aad[1], aad[0], plaintext[1], plaintext[0])
 
     expectTrue(minicrypt.ChaCha8Poly1305.verify(key, chacha8_result[1], nonce, chacha8_result[0]), "ChaCha8-Poly1305 authenticates its result")
     expectFalse(minicrypt.ChaCha20Poly1305.verify(key, chacha8_result[1], nonce, chacha8_result[0]), "ChaCha20-Poly1305 rejects the ChaCha8 tag")
     expectTrue(chacha8_result[0] != chacha20_result[0], "ChaCha8 ciphertext differs from ChaCha20")
 
     decrypted = minicrypt.ChaCha8Poly1305.decrypt(key, nonce, chacha8_result[0])
-    expectEqual(decrypted[0], aad[0], "ChaCha8-Poly1305 recovers AAD")
-    expectEqual(decrypted[2], plaintext[0], "ChaCha8-Poly1305 recovers plaintext")
+    expectEqual(decrypted[0], aad[1], "ChaCha8-Poly1305 recovers AAD")
+    expectEqual(decrypted[2], plaintext[1], "ChaCha8-Poly1305 recovers plaintext")
 
     plaintext = minicrypt.Encode.encodeText8("x" * 131)
-    byte_count = plaintext[1]
+    byte_count = plaintext[0]
     counter = 1
     key_stream = minicrypt.ChaCha.keystream(key, nonce, byte_count, counter, 8)
     simulated_ciphertext = []
     block_start = 0
-    while block_start < plaintext[0].len
-        block = plaintext[0][block_start:block_start+16]
+    while block_start < plaintext[1].len
+        block = plaintext[1][block_start:block_start+16]
         block_key = key_stream[block_start:block_start+16]
         encrypted_block = [0] * block.len
         minicrypt.ChaCha.xorBlock(encrypted_block, block, block_key)
         simulated_ciphertext = simulated_ciphertext + encrypted_block
         block_start = block_start + 16
     end while
-    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext[0], byte_count, counter, 8)
+    ciphertext = minicrypt.ChaCha.chacha(key, nonce, plaintext[1], byte_count, counter, 8)
     expectEqual(simulated_ciphertext, ciphertext, "ChaCha8 keystream matches chacha output")
 end function
 TEST "CHACHA8-POLY1305", @test_chacha8poly1305

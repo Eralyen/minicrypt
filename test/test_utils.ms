@@ -11,7 +11,7 @@ test_hexdump = function
     expected = expected[:34] + " " + expected[34:] + " |....|"
     expectEqual(short_dump, expected)
     
-    bytes = minicrypt.Encode.encodeText8("abcdefghijklmnopq")[0]
+    bytes = minicrypt.Encode.encodeText8("abcdefghijklmnopq")[1]
     b64 = minicrypt.Encode.toBase64(bytes, 17)
     lines = minicrypt.Utils.hexdump(b64).split(char(10))
 

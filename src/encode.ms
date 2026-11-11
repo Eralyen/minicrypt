@@ -70,12 +70,12 @@ Encode.b32tob16 = function(b32, byte_len)
     return b16
 end function
 
-// Takes a string and returns a list of 32-bit numbers. 16 bits per character, the default Grey Hack string encoding. Returns [output, byte_len]
+// Takes a string and returns a list of 32-bit numbers. 16 bits per character, the default Grey Hack string encoding. Returns [byte_len, output]
 // @param {string} text - any string
-// @returns {list | error}      - [output, byte_len] -> [list<number>, number]
+// @returns {list | error}      - [byte_len, output] -> [number, list<number>]
 Encode.encodeText16 = function(text)
     output = []
-    if text.len == 0 then return [output, 0]
+    if text.len == 0 then return [0, output]
     if text.len > 8388608 then return Error("Encode.encodeText16", "max_len_exceeded") // 8388608 = 2^24 / 2 (because 2 bytes per character)
     for i in range(0, text.len - 1, 2)
         c1 = code(text[i])
@@ -83,15 +83,15 @@ Encode.encodeText16 = function(text)
         if i + 1 < text.len then c2 = code(text[i+1])
         output.push(c2 * 65536 + c1)
     end for
-    return [output, text.len*2]
+    return [text.len*2, output]
 end function
 
-// Takes a string produced by decodeText15 and returns a list of 32-bit numbers. 15 bits per character, which is good if you need to store arbitrary 16-bit-unit data in a compact string. Returns [output, byte_len]. The length is implied by the string length, so nothing else needs to be stored or authenticated.
+// Takes a string produced by decodeText15 and returns a list of 32-bit numbers. 15 bits per character, which is good if you need to store arbitrary 16-bit-unit data in a compact string. Returns [byte_len, output]. The length is implied by the string length, so nothing else needs to be stored or authenticated.
 // @param {string} text    - a string of chars in [1, 32768] inclusive, as produced by decodeText15. Its length must not be 1 mod 16
-// @returns {list | error} - [output, byte_len] -> [list<number>, number], where byte_len is always even. If byte_len % 4 == 2, the last number holds only 16 bits and its upper 16 bits are 0. Returns an error if a char is outside [1, 32768], the length is 1 mod 16, or the unused trailing bits are not zero
+// @returns {list | error} - [byte_len, output] -> [number, list<number>], where byte_len is always even. If byte_len % 4 == 2, the last number holds only 16 bits and its upper 16 bits are 0. Returns an error if a char is outside [1, 32768], the length is 1 mod 16, or the unused trailing bits are not zero
 Encode.encodeText15 = function(text)
     output = []
-    if text.len == 0 then return [output, 0]
+    if text.len == 0 then return [0, output]
     POW2 = Encode.POW2
     nchars = text.len
     if nchars % 16 == 1 then return Error("Encode.encodeText15", "invalid_length")
@@ -116,16 +116,16 @@ Encode.encodeText15 = function(text)
         output.push(lastUnit)
     end if
     if acc != 0 then return Error("Encode.encodeText15", "invalid_padding")
-    return [output, units * 2]
+    return [units * 2, output]
 end function
 
 
-// Takes a string and returns a list of 32-bit numbers. 8 bits per character. Returns [output, byte_len]
+// Takes a string and returns a list of 32-bit numbers. 8 bits per character. Returns [byte_len, output]
 // @param {string} text    - any string
-// @returns {list | error} - [output, byte_len] -> [list<number>, number]
+// @returns {list | error} - [byte_len, output] -> [number, list<number>]
 Encode.encodeText8 = function(text)
     output = []
-    if text.len == 0 then return [output, 0]
+    if text.len == 0 then return [0, output]
     if text.len > 16777216 then return Error("Encode.decodeText16", "max_len_exceeded") // 16777216 = 2^24 (because 1 byte per character)
     for i in range(0, text.len - 1, 4)
         c1 = code(text[i])
@@ -137,7 +137,7 @@ Encode.encodeText8 = function(text)
         if i + 3 < text.len then c4 = code(text[i+3])
         output.push(c4 * 16777216 + c3 * 65536 + c2 * 256 + c1)
     end for
-    return [output, text.len]
+    return [text.len, output]
 end function
 
 // Takes a list of 32-bit numbers and returns a string. 15 bits per character, which is good if you need to turn arbitrary numbers into a string that is safe to store in Grey Hack. That is, every char is in [1, 32768], avoiding char(0) and the char(55296)-char(57343) range.
@@ -261,13 +261,13 @@ Encode.toBase64 = function(input, len)
     return b64
 end function
 
-// Decodes base64 into a list of 32-bit numbers and its length in bytes. Returns [output, byte_len] if the string is valid.
+// Decodes base64 into a list of 32-bit numbers and its length in bytes. Returns [byte_len, output] if the string is valid.
 // @param {string} b64 - the base64 string
-// @returns {list | error}     - Returns [output, byte_len] -> [list<number>, number] if 'b64' is valid. Returns an error object if it's not a valid base64 string (not a string, invalid character or invalid padding)
+// @returns {list | error}     - Returns [byte_len, output] -> [number, list<number>] if 'b64' is valid. Returns an error object if it's not a valid base64 string (not a string, invalid character or invalid padding)
 Encode.fromBase64 = function(b64)
     if typeof(b64) != "string" then return Error("Encode.fromBase64", "not_a_string")
     if b64.len % 4 != 0 then return Error("Encode.fromBase64", "invalid_length")
-    if b64.len == 0 then return [[], 0]
+    if b64.len == 0 then return [0, []]
     if ceil((b64.len / 8) * 6) > 16777216 then return Error("Encode.fromBase64", "max_len_exceeded")
 
     I2B64 = Encode.INT2B64
@@ -318,17 +318,17 @@ Encode.fromBase64 = function(b64)
         w = b0 + b1 * 256 + b2 * 65536 + b3 * 16777216
         out.push(w)
     end for
-    return [out, bytes.len]
+    return [bytes.len, out]
 end function
 
 // Turns a hex string into a list of 32-bit integers.
 // @param {string}                 h - the hex string
-// @returns {list<number> | error}   - returns error if it's not a valid hex string, or the encoded list of 32-bit integers otherwise.
+// @returns {list | error}   - [byte_len, output] -> [number, list<number>] if the hex string is valid.
 Encode.encodeHex = function(h)
     if typeof(h) != "string" then return Error("Encode.encodeHex", "not_a_string")
     if h.len % 2 != 0 then return Error("Encode.encodeHex", "odd_digit_amount")
     if h.len >= 2 and h[:2] == "0x" then h = h[2:]
-    if h == "" then return [[], 0]
+    if h == "" then return [0, []]
     output = []
     HEX2INT = Encode.HEX2INT
     for i in range(0, h.len - 1, 8)
@@ -345,7 +345,7 @@ Encode.encodeHex = function(h)
         end for
         output.push(x)
     end for
-    return [output, h.len/2]
+    return [h.len/2, output]
 end function
 
 // Turns a list of 32-bit integers into a hex string (little endian)
@@ -427,7 +427,7 @@ Encode.getEncoding = function(type)
         return type
     else if type == "bi32" then
         e = function(x)
-            return [x, x.len * 4]
+            return [x.len * 4, x]
         end function
         d = function(x, l)
             return x

@@ -38,8 +38,8 @@ Utils.hexdump = function(b64, encoding="base64")
     val = encode(b64)
     if val == null then return null
     if typeof(val) == "error" then return val
-    num = val[0]
-    len_bytes = val[1]
+    len_bytes = val[0]
+    num = val[1]
     if len_bytes == 0 then return ""
     bytes = []
     for i in range(0, num.len-1)
